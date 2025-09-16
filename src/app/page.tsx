@@ -1,5 +1,4 @@
 import Image from "next/image";
-
 import Link from "next/link";
 
 export default async function Home() {
@@ -19,34 +18,32 @@ export default async function Home() {
           />
         </div>
 
-        <h1 className="mb-4 font-extrabold text-gray-900">
-          Welcome to Next.js Starter
+        <h1 className="mb-4 font-extrabold text-4xl text-gray-900">
+          AI Agent Starter
         </h1>
 
         <p className="mb-8 text-gray-600 text-lg">
-          This starter is powered by{" "}
-          <Link className="font-bold underline" href="https://nextjs.org">
-            Next.js
+          A complete AI agent starter built with{" "}
+          <Link className="font-bold underline" href="https://sdk.vercel.ai">
+            Vercel AI SDK
           </Link>
-          , the most popular React Framework, preconfigured with batteries
-          included tools like{" "}
-          <Link className="font-bold underline" href="https://tailwindcss.com">
-            Tailwind
+          , featuring webhook triggers, tool integration, and{" "}
+          <Link
+            className="font-bold underline"
+            href="https://vercel.com/docs/ai-gateway"
+          >
+            Vercel AI Gateway
           </Link>
-          ,{" "}
-          <Link className="font-bold underline" href="https://ui.shadcn.com">
-            shadcn/ui
-          </Link>
-          ,{" "}
-          <Link className="font-bold underline" href="https://biomejs.dev">
-            Biome
-          </Link>
-          , and{" "}
-          <Link className="font-bold underline" href="https://vitest.dev">
-            Vitest
-          </Link>
-          .
+          . Includes example agents for outfit recommendations with weather,
+          closet, and friend advice tools.
         </p>
+
+        <Link
+          href="/outfit"
+          className="inline-flex items-center justify-center rounded-md bg-gray-900 px-6 py-3 font-medium text-white transition-colors hover:bg-gray-800"
+        >
+          Try Now
+        </Link>
       </div>
     </main>
   );
