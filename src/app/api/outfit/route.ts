@@ -1,21 +1,13 @@
-import { askFriendTool, checkWeatherTool, viewClosetTool } from "@/lib/tools";
 import { geolocation } from "@vercel/functions";
 import { generateObject, generateText, stepCountIs } from "ai";
 import { type NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 
-const outfitSchema = z.object({
-  top: z.string().describe("The recommended top/shirt item"),
-  bottom: z.string().describe("The recommended bottom/pants item"),
-  shoes: z.string().describe("The recommended shoes"),
-  accessory: z.string().describe("The recommended accessory"),
-  reasoning: z.string().describe("Brief explanation for the outfit choice"),
-});
-export type OutfitRecommendation = z.infer<typeof outfitSchema>;
+import { outfitSchema } from "@/lib/outfit";
+import { askFriendTool, checkWeatherTool, viewClosetTool } from "@/lib/tools";
 
 export async function POST(request: NextRequest) {
   try {
-    const { city } = geolocation(request);
+    const { city, latitude, longitude } = geolocation(request);
 
     // Step 1: Use the agent to gather information and make recommendation
     const agentResult = await generateText({
@@ -41,7 +33,7 @@ Provide a detailed recommendation with specific clothing items and explain your 
         },
         {
           role: "user",
-          content: `I need an outfit recommendation for today in ${city}. Please help me choose what to wear.`,
+          content: `I need an outfit recommendation for today in ${city} located at: ${latitude}.${longitude}. Please help me choose what to wear.`,
         },
       ],
       stopWhen: stepCountIs(5),
