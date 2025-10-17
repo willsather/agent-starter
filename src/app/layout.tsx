@@ -2,7 +2,7 @@ import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { VercelToolbar } from "@vercel/toolbar/next";
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import type { ReactNode } from "react";
 
 import "@/app/tailwind.css";
@@ -15,10 +15,17 @@ export const metadata: Metadata = {
   icons: [{ rel: "icon", url: "/favicon.svg", type: "image/svg+xml" }],
 };
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const GeistSans = Geist({
   subsets: ["latin"],
+  variable: "--font-geist-sans",
 });
+
+const GeistMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-geist-mono",
+});
+
+const fonts = `${GeistSans.className} ${GeistMono.className}`;
 
 export default function RootLayout({
   children,
@@ -27,7 +34,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={cn(geistSans.className, "bg-black")}>
+      <body className={cn(fonts, "bg-black font-sans")}>
         {children}
 
         <Analytics />
