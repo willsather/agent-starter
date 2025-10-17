@@ -17,10 +17,12 @@ export function WeatherAccordion({
   geolocation: Geolocation;
 }) {
   const [weatherResult, setWeatherResult] = useState<string>("");
+  const [loading, setLoading] = useState(false);
 
   const handleOpen = async () => {
-    if (weatherResult) return;
+    if (weatherResult || loading) return;
 
+    setLoading(true);
     try {
       const weather = await getWeatherData(
         geolocation.latitude,
@@ -30,6 +32,8 @@ export function WeatherAccordion({
     } catch (error) {
       console.error("Error fetching weather data:", error);
       setWeatherResult("Failed to fetch weather data");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -42,19 +46,20 @@ export function WeatherAccordion({
         Get Weather
       </AccordionTrigger>
       <AccordionContent className="space-y-4">
-        {weatherResult && (
-          <>
-            <div className="font-mono text-gray-400 text-sm">
-              {geolocation.city} ({geolocation.latitude},{" "}
-              {geolocation.longitude})
+        <div className="font-mono text-gray-400 text-sm">
+          {geolocation.city} ({geolocation.latitude}, {geolocation.longitude})
+        </div>
+        <div className="rounded border border-white/20 bg-black/20 p-4">
+          {loading ? (
+            <div className="space-y-2">
+              <div className="h-4 animate-pulse rounded bg-white/10" />
             </div>
-            <div className="rounded border border-white/20 bg-black/20 p-4">
-              <pre className="whitespace-pre-wrap font-mono text-gray-300 text-sm">
-                {weatherResult}
-              </pre>
-            </div>
-          </>
-        )}
+          ) : weatherResult ? (
+            <pre className="whitespace-pre-wrap font-mono text-gray-300 text-sm">
+              {weatherResult}
+            </pre>
+          ) : null}
+        </div>
       </AccordionContent>
     </AccordionItem>
   );
