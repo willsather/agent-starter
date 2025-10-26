@@ -7,7 +7,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-
 import type { Geolocation } from "@/lib/geolocation";
 import { formatWeatherDisplay, getWeatherData } from "@/lib/weather";
 

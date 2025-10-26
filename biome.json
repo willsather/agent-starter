@@ -1,14 +1,44 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.8.2/schema.json",
-  "organizeImports": { "enabled": true },
+  "$schema": "https://biomejs.dev/schemas/2.1.2/schema.json",
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": {
+          "level": "on",
+          "options": {
+            "groups": [
+              ":URL:",
+              ":BLANK_LINE:",
+              [
+                ":NODE:",
+                ":BUN:",
+                ":PACKAGE:",
+                ":PACKAGE_WITH_PROTOCOL:",
+                "!@agents/**"
+              ],
+              ":BLANK_LINE:",
+              "@agents/**",
+              ":BLANK_LINE:",
+              ":ALIAS:",
+              ":BLANK_LINE:",
+              ":PATH:"
+            ]
+          }
+        }
+      }
+    }
+  },
   "files": {
-    "ignore": [
-      "node_modules",
-      "playwright-report",
-      ".next",
-      ".well-known",
-      ".vercel",
-      ".idea"
+    "includes": [
+      "**",
+      "!**/node_modules",
+      "!**/dist",
+      "!**/playwright-report",
+      "!**/.next",
+      "!**/.vercel",
+      "!**/.idea",
+      "!**/.turbo",
+      "!**/.well-known"
     ]
   },
   "linter": {

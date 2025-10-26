@@ -7,7 +7,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-
 import { getFriendAdvice } from "@/lib/friend";
 
 export function FriendAccordion() {

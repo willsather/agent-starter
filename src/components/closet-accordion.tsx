@@ -7,7 +7,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-
 import { type ClosetItem, getClosetItems } from "@/lib/closet";
 
 export function ClosetAccordion() {
