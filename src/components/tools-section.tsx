@@ -1,5 +1,4 @@
 import { Accordion } from "@/components/ui/accordion";
-
 import { getLocation } from "@/lib/geolocation";
 
 import { ClosetAccordion } from "./closet-accordion";

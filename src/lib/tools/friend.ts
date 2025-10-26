@@ -1,6 +1,7 @@
 import { tool } from "ai";
 import { z } from "zod";
-import { getFriendAdvice, formatFriendAdvice } from "@/lib/friend";
+
+import { formatFriendAdvice, getFriendAdvice } from "@/lib/friend";
 
 export const askFriendTool = tool({
   description: "Ask a friend for outfit advice",

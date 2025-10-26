@@ -1,6 +1,7 @@
 import { tool } from "ai";
 import { z } from "zod";
-import { getClosetItems, formatClosetDisplay } from "@/lib/closet";
+
+import { formatClosetDisplay, getClosetItems } from "@/lib/closet";
 
 export const viewClosetTool = tool({
   description: "View available clothing items in the closet",

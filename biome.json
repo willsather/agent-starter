@@ -2,7 +2,14 @@
   "$schema": "https://biomejs.dev/schemas/1.8.2/schema.json",
   "organizeImports": { "enabled": true },
   "files": {
-    "ignore": ["node_modules", "playwright-report", ".next", ".vercel", ".idea"]
+    "ignore": [
+      "node_modules",
+      "playwright-report",
+      ".next",
+      ".well-known",
+      ".vercel",
+      ".idea"
+    ]
   },
   "linter": {
     "enabled": true,

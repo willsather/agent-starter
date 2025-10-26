@@ -10,14 +10,14 @@ import "@/app/tailwind.css";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
-  title: "Outfit Agent",
+  title: "Agent Starter",
   description: "Basic Next.js Template to quickly build AI Agents",
   icons: [{ rel: "icon", url: "/favicon.svg", type: "image/svg+xml" }],
 };
 
 const GeistSans = Geist({
-  subsets: ["latin"],
   variable: "--font-geist-sans",
+  subsets: ["latin"],
 });
 
 const GeistMono = Geist_Mono({

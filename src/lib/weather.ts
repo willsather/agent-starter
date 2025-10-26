@@ -25,7 +25,7 @@ export const getWeatherData = async (
     return {
       temperature: currentPeriod.temperature,
       condition: currentPeriod.shortForecast.toLowerCase(),
-      windSpeed: parseInt(currentPeriod.windSpeed) || 0,
+      windSpeed: Number.parseInt(currentPeriod.windSpeed) || 0,
     };
   } catch (error) {
     console.error("Weather API error:", error);
