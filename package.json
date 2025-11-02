@@ -14,7 +14,7 @@
     "@ai-sdk/react": "^2.0.82",
     "@radix-ui/react-accordion": "^1.2.12",
     "@vercel/functions": "^3.1.4",
-    "ai": "^5.0.82",
+    "ai": "6.0.0-beta.92",
     "clsx": "^2.1.1",
     "lucide-react": "^0.546.0",
     "next": "16.0.0",
@@ -49,11 +49,5 @@
   "packageManager": "pnpm@10.7.0",
   "engines": {
     "node": ">=22"
-  },
-  "pnpm": {
-    "overrides": {
-      "@types/react": "19.2.2",
-      "@types/react-dom": "19.2.2"
-    }
   }
 }
