@@ -52,7 +52,6 @@ export function OutfitDisplay() {
           {error}
         </div>
       )}
-
       {/* Outfit Grid */}
       <div className="mb-8">
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -121,7 +120,6 @@ export function OutfitDisplay() {
           </div>
         </div>
       </div>
-
       {/* Reasoning */}
       {outfit?.reasoning && (
         <div className="mb-12 rounded-lg border border-white/10 bg-white/5 p-6 backdrop-blur-sm">
