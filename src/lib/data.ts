@@ -1,0 +1,66 @@
+import type { Transaction } from "./anomaly";
+
+export const transactions: Transaction[] = [
+  { id: "TXN001", date: "2025-01-02", name: "Starbucks", description: "Coffee", amount: 6.45 },
+  { id: "TXN002", date: "2025-01-03", name: "Whole Foods", description: "Groceries", amount: 87.32 },
+  { id: "TXN003", date: "2025-01-04", name: "Shell Gas", description: "Fuel", amount: 52.18 },
+  { id: "TXN004", date: "2025-01-05", name: "Netflix", description: "Subscription", amount: 15.99 },
+  { id: "TXN005", date: "2025-01-06", name: "Amazon", description: "Household items", amount: 43.21 },
+  { id: "TXN006", date: "2025-01-07", name: "Chipotle", description: "Lunch", amount: 12.85 },
+  { id: "TXN007", date: "2025-01-08", name: "Uber", description: "Ride to airport", amount: 34.50 },
+  { id: "TXN008", date: "2025-01-09", name: "Target", description: "Clothing", amount: 78.99 },
+  { id: "TXN009", date: "2025-01-10", name: "Spotify", description: "Subscription", amount: 10.99 },
+  { id: "TXN010", date: "2025-01-11", name: "CVS Pharmacy", description: "Medicine", amount: 24.56 },
+  // anomaly: unusually large amount
+  { id: "TXN011", date: "2025-01-12", name: "Wire Transfer", description: "URGENT Transfer - Act Now", amount: 4999.00 },
+  { id: "TXN012", date: "2025-01-13", name: "Trader Joes", description: "Groceries", amount: 62.44 },
+  { id: "TXN013", date: "2025-01-14", name: "Home Depot", description: "Tools", amount: 156.78 },
+  { id: "TXN014", date: "2025-01-15", name: "Panera Bread", description: "Lunch", amount: 14.23 },
+  { id: "TXN015", date: "2025-01-16", name: "Costco", description: "Bulk groceries", amount: 234.56 },
+  { id: "TXN016", date: "2025-01-17", name: "Verizon", description: "Phone bill", amount: 85.00 },
+  { id: "TXN017", date: "2025-01-18", name: "Planet Fitness", description: "Gym membership", amount: 24.99 },
+  // anomaly: duplicate charge same day
+  { id: "TXN018", date: "2025-01-19", name: "Apple Store", description: "iPhone case", amount: 49.00 },
+  { id: "TXN019", date: "2025-01-19", name: "Apple Store", description: "iPhone case", amount: 49.00 },
+  { id: "TXN020", date: "2025-01-20", name: "Dominos", description: "Dinner", amount: 28.75 },
+  { id: "TXN021", date: "2025-01-21", name: "USPS", description: "Shipping", amount: 8.95 },
+  { id: "TXN022", date: "2025-01-22", name: "Walgreens", description: "Personal care", amount: 32.11 },
+  { id: "TXN023", date: "2025-01-23", name: "Starbucks", description: "Coffee", amount: 5.95 },
+  { id: "TXN024", date: "2025-01-24", name: "Lyft", description: "Ride share", amount: 18.40 },
+  // anomaly: suspicious merchant name
+  { id: "TXN025", date: "2025-01-25", name: "CRYPTOWIN247", description: "Investment opportunity", amount: 750.00 },
+  { id: "TXN026", date: "2025-01-26", name: "Whole Foods", description: "Groceries", amount: 95.23 },
+  { id: "TXN027", date: "2025-01-27", name: "AMC Theaters", description: "Movie tickets", amount: 32.00 },
+  { id: "TXN028", date: "2025-01-28", name: "Best Buy", description: "HDMI cable", amount: 19.99 },
+  { id: "TXN029", date: "2025-01-29", name: "Chick-fil-A", description: "Lunch", amount: 11.45 },
+  { id: "TXN030", date: "2025-01-30", name: "Gas Station", description: "Fuel", amount: 48.67 },
+  { id: "TXN031", date: "2025-01-31", name: "Hulu", description: "Subscription", amount: 17.99 },
+  { id: "TXN032", date: "2025-02-01", name: "IKEA", description: "Furniture", amount: 289.00 },
+  { id: "TXN033", date: "2025-02-02", name: "Subway", description: "Lunch", amount: 9.87 },
+  // anomaly: round number wire transfer
+  { id: "TXN034", date: "2025-02-03", name: "Foreign Transfer", description: "International wire", amount: 2000.00 },
+  { id: "TXN035", date: "2025-02-04", name: "Kroger", description: "Groceries", amount: 67.89 },
+  { id: "TXN036", date: "2025-02-05", name: "Delta Airlines", description: "Flight booking", amount: 387.00 },
+  { id: "TXN037", date: "2025-02-06", name: "Marriott", description: "Hotel", amount: 156.00 },
+  { id: "TXN038", date: "2025-02-07", name: "Starbucks", description: "Coffee", amount: 7.25 },
+  { id: "TXN039", date: "2025-02-08", name: "Shell Gas", description: "Fuel", amount: 55.32 },
+  { id: "TXN040", date: "2025-02-09", name: "REI", description: "Camping gear", amount: 123.45 },
+  { id: "TXN041", date: "2025-02-10", name: "Safeway", description: "Groceries", amount: 78.90 },
+  { id: "TXN042", date: "2025-02-11", name: "YouTube Premium", description: "Subscription", amount: 13.99 },
+  { id: "TXN043", date: "2025-02-12", name: "Taco Bell", description: "Late night food", amount: 15.67 },
+  { id: "TXN044", date: "2025-02-13", name: "Lowe's", description: "Garden supplies", amount: 89.23 },
+  { id: "TXN045", date: "2025-02-14", name: "Flowers.com", description: "Valentine's gift", amount: 65.00 },
+  { id: "TXN046", date: "2025-02-15", name: "PetSmart", description: "Pet food", amount: 54.32 },
+  { id: "TXN047", date: "2025-02-16", name: "Wendy's", description: "Lunch", amount: 8.99 },
+  { id: "TXN048", date: "2025-02-17", name: "AT&T", description: "Internet bill", amount: 79.99 },
+  { id: "TXN049", date: "2025-02-18", name: "Macy's", description: "Clothing sale", amount: 112.34 },
+  { id: "TXN050", date: "2025-02-19", name: "Dunkin", description: "Coffee and donuts", amount: 11.23 },
+];
+
+export function transactionsToCsv(): string {
+  const header = "id,date,name,description,amount";
+  const rows = transactions.map(
+    (t) => `${t.id},${t.date},${t.name},"${t.description}",${t.amount}`
+  );
+  return [header, ...rows].join("\n");
+}

@@ -1,10 +1,8 @@
 import { withVercelToolbar } from "@vercel/toolbar/plugins/next";
 import type { NextConfig } from "next";
-import { withWorkflow } from "workflow/next";
 
-const nextConfig: NextConfig = {};
+const nextConfig: NextConfig = {
+  serverExternalPackages: ["bash-tool", "@vercel/sandbox"],
+};
 
-const toolbarConfig = withVercelToolbar()(nextConfig);
-const workflowConfig = withWorkflow(toolbarConfig);
-
-export default workflowConfig;
+export default withVercelToolbar()(nextConfig);
