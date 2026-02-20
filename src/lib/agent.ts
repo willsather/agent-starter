@@ -1,6 +1,7 @@
 import { Output, ToolLoopAgent } from "ai";
 import { z } from "zod";
-import { type AnomalyResult } from "./anomaly";
+
+import type { AnomalyResult } from "./anomaly";
 import { transactions } from "./data";
 
 const anomalyResultSchema = z.object({

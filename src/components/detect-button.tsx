@@ -1,8 +1,15 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import {
+  AlertTriangle,
+  ChevronDown,
+  Hammer,
+  Loader2,
+  Terminal,
+} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+
 import { cn } from "@/lib/utils";
-import { Loader2, AlertTriangle, ChevronDown, Hammer, Terminal } from "lucide-react";
 
 type DetectButtonProps = {
   onDetect: (useSandbox: boolean) => void;
@@ -61,7 +68,7 @@ export function DetectButton({
           onClick={() => setOpen(!open)}
           disabled={loading || disabled}
           className={cn(
-            "inline-flex items-center rounded-r-lg border-l border-primary-foreground/20 px-2 py-2 transition-colors",
+            "inline-flex items-center rounded-r-lg border-primary-foreground/20 border-l px-2 py-2 transition-colors",
             "bg-primary text-primary-foreground hover:bg-primary/90",
             "disabled:cursor-not-allowed disabled:opacity-50",
           )}
@@ -81,13 +88,13 @@ export function DetectButton({
               setOpen(false);
             }}
             disabled={loading}
-            className="flex w-full items-center justify-between px-3 py-2 text-xs hover:bg-muted/50 transition-colors rounded-t-lg"
+            className="flex w-full items-center justify-between rounded-t-lg px-3 py-2 text-xs transition-colors hover:bg-muted/50"
           >
             <span className="flex items-center gap-2">
               <Hammer className="size-4" />
               <span className="font-medium">Tools</span>
             </span>
-            <span className="text-muted-foreground text-[10px]">
+            <span className="text-[10px] text-muted-foreground">
               agent calls tool directly
             </span>
           </button>
@@ -98,13 +105,13 @@ export function DetectButton({
               setOpen(false);
             }}
             disabled={loading}
-            className="flex w-full items-center justify-between px-3 py-2 text-xs hover:bg-muted/50 transition-colors rounded-b-lg border-t border-border"
+            className="flex w-full items-center justify-between rounded-b-lg border-border border-t px-3 py-2 text-xs transition-colors hover:bg-muted/50"
           >
             <span className="flex items-center gap-2">
               <Terminal className="size-4" />
               <span className="font-medium">Sandbox</span>
             </span>
-            <span className="text-muted-foreground text-[10px]">
+            <span className="text-[10px] text-muted-foreground">
               agent uses bash in sandbox
             </span>
           </button>

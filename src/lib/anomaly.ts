@@ -23,7 +23,7 @@ export const anomalySchema = z.object({
     z.object({
       transaction_id: z.string(),
       reason: z.string(),
-    })
+    }),
   ),
   summary: z.string(),
 });

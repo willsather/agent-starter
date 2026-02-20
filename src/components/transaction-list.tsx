@@ -1,10 +1,12 @@
 "use client";
 
+import { AlertTriangle, ChevronDown } from "lucide-react";
 import { useState } from "react";
-import { ChevronDown, AlertTriangle } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { transactions } from "@/lib/data";
+
 import type { AnomalyResult } from "@/lib/anomaly";
+import { transactions } from "@/lib/data";
+import { cn } from "@/lib/utils";
+
 import { DetectButton } from "./detect-button";
 
 export function TransactionList() {
@@ -14,7 +16,7 @@ export function TransactionList() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const anomalyMap = new Map(
-    result?.anomalies.map((a) => [a.transaction_id, a.reason]) ?? []
+    result?.anomalies.map((a) => [a.transaction_id, a.reason]) ?? [],
   );
 
   async function detectAnomalies(useSandbox: boolean) {
@@ -56,11 +58,19 @@ export function TransactionList() {
       <div className="overflow-hidden rounded-lg border border-border bg-card/50 backdrop-blur-sm">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-border bg-muted/30">
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Date</th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Name</th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Description</th>
-              <th className="px-4 py-3 text-right font-medium text-muted-foreground">Amount</th>
+            <tr className="border-border border-b bg-muted/30">
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                Date
+              </th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                Name
+              </th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                Description
+              </th>
+              <th className="px-4 py-3 text-right font-medium text-muted-foreground">
+                Amount
+              </th>
               <th className="w-10 px-4 py-3" />
             </tr>
           </thead>
@@ -110,15 +120,15 @@ function TransactionRow({
   isExpanded,
   onToggle,
 }: TransactionRowProps) {
-  const { id, date, name, description, amount } = transaction;
+  const { date, name, description, amount } = transaction;
 
   return (
     <>
       <tr
         className={cn(
-          "border-b border-border transition-colors",
-          isAnomaly && "bg-red-500/10 border-red-500/20",
-          isAnomaly && "cursor-pointer hover:bg-red-500/15"
+          "border-border border-b transition-colors",
+          isAnomaly && "border-red-500/20 bg-red-500/10",
+          isAnomaly && "cursor-pointer hover:bg-red-500/15",
         )}
         onClick={isAnomaly ? onToggle : undefined}
       >
@@ -143,14 +153,14 @@ function TransactionRow({
             <ChevronDown
               className={cn(
                 "h-4 w-4 text-muted-foreground transition-transform",
-                isExpanded && "rotate-180"
+                isExpanded && "rotate-180",
               )}
             />
           )}
         </td>
       </tr>
       {isAnomaly && isExpanded && (
-        <tr className="border-b border-red-500/20 bg-red-500/5">
+        <tr className="border-red-500/20 border-b bg-red-500/5">
           <td colSpan={5} className="px-4 py-3">
             <div className="flex items-start gap-2 text-sm">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />

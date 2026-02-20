@@ -2,7 +2,8 @@ import { Sandbox } from "@vercel/sandbox";
 import { ToolLoopAgent } from "ai";
 import { createBashTool } from "bash-tool";
 import { z } from "zod";
-import { type AnomalyResult } from "./anomaly";
+
+import type { AnomalyResult } from "./anomaly";
 import { transactionsToCsv } from "./data";
 
 const finalizeSchema = z.object({
@@ -10,7 +11,7 @@ const finalizeSchema = z.object({
     z.object({
       transaction_id: z.string(),
       reason: z.string(),
-    })
+    }),
   ),
   summary: z.string(),
 });
@@ -33,8 +34,10 @@ export async function createSandboxAnomalyAgent(): Promise<AnomalyResult> {
     },
     onAfterBashCall: ({ command, result }) => {
       console.log(`[bash] completed: ${command} (exit: ${result.exitCode})`);
-      if (result.stdout) console.log(`[bash] stdout: ${result.stdout.slice(0, 500)}`);
-      if (result.stderr) console.log(`[bash] stderr: ${result.stderr.slice(0, 500)}`);
+      if (result.stdout)
+        console.log(`[bash] stdout: ${result.stdout.slice(0, 500)}`);
+      if (result.stderr)
+        console.log(`[bash] stderr: ${result.stderr.slice(0, 500)}`);
       return { result };
     },
   });
@@ -68,7 +71,8 @@ After analysis, call the finalize tool with your findings.`,
     });
 
     await agent.generate({
-      prompt: "Analyze ./workspace/transactions.csv for anomalies and call finalize with your findings.",
+      prompt:
+        "Analyze ./workspace/transactions.csv for anomalies and call finalize with your findings.",
     });
 
     if (!result) {

@@ -10,7 +10,7 @@ export async function POST() {
     console.error("Anomaly detection failed:", error);
     return Response.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
