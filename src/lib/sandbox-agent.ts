@@ -5,7 +5,7 @@ import { createBashTool } from "bash-tool";
 import { type AnomalyResult, anomalySchema } from "./anomaly";
 import { transactionsToCsv } from "./data";
 
-export async function createSandboxAnomalyAgent(): Promise<AnomalyResult> {
+export async function findAnomaliesWithSandbox(): Promise<AnomalyResult> {
   console.log("[sandbox] creating...");
   const sandbox = await Sandbox.create({ timeout: 60_000 });
   console.log(`[sandbox] created: ${sandbox.sandboxId}`);

@@ -14,7 +14,7 @@ const anomalyResultSchema = z.object({
   summary: z.string(),
 });
 
-export async function createAnomalyAgent(): Promise<AnomalyResult> {
+export async function findAnomalies(): Promise<AnomalyResult> {
   const agent = new ToolLoopAgent({
     model: "anthropic/claude-haiku-4.5",
     output: Output.object({

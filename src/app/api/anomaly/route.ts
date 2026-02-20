@@ -1,10 +1,10 @@
-import { createAnomalyAgent } from "@/lib/agent";
+import { findAnomalies } from "@/lib/agent";
 
 export const maxDuration = 60;
 
 export async function POST() {
   try {
-    const result = await createAnomalyAgent();
+    const result = await findAnomalies();
     return Response.json(result);
   } catch (error) {
     console.error("Anomaly detection failed:", error);
