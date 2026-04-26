@@ -2,7 +2,7 @@ export function Header() {
   return (
     <div className="mb-12 text-center">
       <h1 className="mb-4 font-bold font-mono text-4xl tracking-tight">
-        Transaction Anomaly Detection
+        Agent Starter
       </h1>
       <p className="text-muted-foreground">
         AI agent that identifies suspicious transactions
