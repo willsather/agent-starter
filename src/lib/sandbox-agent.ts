@@ -8,7 +8,7 @@ import { transactionsToCsv } from "./data";
 export async function findAnomaliesWithSandbox(): Promise<AnomalyResult> {
   console.log("[sandbox] creating...");
   const sandbox = await Sandbox.create({ timeout: 60_000 });
-  console.log(`[sandbox] created: ${sandbox.sandboxId}`);
+  console.log(`[sandbox] created: ${sandbox.name}`);
 
   const { tools } = await createBashTool({
     sandbox,
@@ -54,7 +54,7 @@ Use bash commands (awk, grep, sort, etc.) to analyze the data. Look for:
 
     return output;
   } finally {
-    console.log(`[sandbox] stopping: ${sandbox.sandboxId}`);
+    console.log(`[sandbox] stopping: ${sandbox.name}`);
     await sandbox.stop();
     console.log("[sandbox] stopped");
   }
