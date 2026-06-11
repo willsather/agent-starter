@@ -27,6 +27,7 @@
     "**/*.ts",
     "**/*.tsx",
     "next-env.d.ts",
+    ".ash/**/*.d.ts",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],

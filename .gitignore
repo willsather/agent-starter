@@ -26,6 +26,11 @@ yarn-error.log*
 dist
 out
 
+# eve
+.ash
+.eve
+.workflow-data
+
 # production
 build
 
@@ -41,3 +46,4 @@ next-env.d.ts
 
 # vercel
 .vercel
+.env*

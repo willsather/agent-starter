@@ -1,8 +1,7 @@
 import { withVercelToolbar } from "@vercel/toolbar/plugins/next";
+import { withAsh } from "experimental-ash/next";
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-  serverExternalPackages: ["bash-tool", "@vercel/sandbox"],
-};
+const nextConfig: NextConfig = {};
 
-export default withVercelToolbar()(nextConfig);
+export default withAsh(withVercelToolbar()(nextConfig));
