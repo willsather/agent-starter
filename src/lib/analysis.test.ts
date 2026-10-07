@@ -60,6 +60,7 @@ function charge(
 function recurringResult(ids: string[]): AnalysisResult {
   return {
     mode: "recurring",
+    label: "Recurring",
     matches: ids.map((transaction_id) => ({
       transaction_id,
       reason: "Scheduled renewal.",
@@ -71,6 +72,7 @@ function recurringResult(ids: string[]): AnalysisResult {
 function result(mode: AnalysisResult["mode"]): AnalysisResult {
   return {
     mode,
+    label: "Groceries",
     matches: [
       { transaction_id: "TXN001", reason: "Monthly subscription." },
       { transaction_id: "TXN003", reason: "Monthly music payment." },
@@ -86,33 +88,93 @@ describe("analysisSchema", () => {
       const analysis = result(mode);
       expect(analysisSchema.parse(analysis)).toEqual(analysis);
       expect(
-        analysisSchema.parse({ mode, matches: [], summary: "No matches." }),
-      ).toEqual({ mode, matches: [], summary: "No matches." });
+        analysisSchema.parse({
+          mode,
+          label: "Groceries",
+          matches: [],
+          summary: "No matches.",
+        }),
+      ).toEqual({
+        mode,
+        label: "Groceries",
+        matches: [],
+        summary: "No matches.",
+      });
+    },
+  );
+
+  it("requires a label even when the rest of the result is valid", () => {
+    const { label: _label, ...withoutLabel } = result("search");
+    expect(analysisSchema.safeParse(withoutLabel).success).toBe(false);
+  });
+
+  it.each(["", "   ", "x".repeat(33), null, 42])(
+    "rejects an invalid label: %j",
+    (label) => {
+      expect(
+        analysisSchema.safeParse({ ...result("search"), label }).success,
+      ).toBe(false);
+    },
+  );
+
+  it("trims a valid label before returning it", () => {
+    expect(
+      analysisSchema.parse({ ...result("search"), label: "  Groceries \n" })
+        .label,
+    ).toBe("Groceries");
+  });
+
+  it.each(["Groceries", "Weekly essentials", "My custom view", "x".repeat(32)])(
+    "accepts the custom label %j independently of mode",
+    (label) => {
+      for (const mode of ["anomalies", "recurring", "search"] as const) {
+        expect(analysisSchema.parse({ ...result(mode), label }).label).toBe(
+          label,
+        );
+      }
     },
   );
 
   it.each([
-    { matches: [], summary: "Missing mode." },
-    { mode: "unknown", matches: [], summary: "Unknown mode." },
-    { mode: "anomalies", anomalies: [], summary: "Old contract." },
+    { label: "Matches", matches: [], summary: "Missing mode." },
+    {
+      mode: "unknown",
+      label: "Matches",
+      matches: [],
+      summary: "Unknown mode.",
+    },
+    {
+      mode: "anomalies",
+      label: "Matches",
+      anomalies: [],
+      summary: "Old contract.",
+    },
     {
       mode: "search",
+      label: "Today",
       matches: [{ transaction_id: "TXN001" }],
       summary: "Missing reason.",
     },
     {
       mode: "search",
+      label: "Today",
       matches: [{ transaction_id: 1, reason: "Invalid ID." }],
       summary: "Invalid match.",
     },
     {
       mode: "search",
+      label: "Today",
       matches: [{ transaction_id: "TXN001", reason: 1 }],
       summary: "Invalid reason.",
     },
-    { mode: "recurring", matches: null, summary: "Invalid matches." },
-    { mode: "search", matches: [] },
-    { mode: "search", matches: [], summary: 1 },
+    {
+      mode: "recurring",
+      label: "Matches",
+      matches: null,
+      summary: "Invalid matches.",
+    },
+    { mode: "search", label: "Matches", matches: [] },
+    { mode: "search", label: "Matches", matches: [], summary: 1 },
   ])("rejects malformed results: %j", (analysis) => {
     expect(analysisSchema.safeParse(analysis).success).toBe(false);
   });
@@ -254,11 +316,30 @@ describe("buildHighlights", () => {
   });
 
   it.each(["anomalies", "recurring", "search"] as const)(
+    "keeps %s highlight semantics independent of the filtered-view label",
+    (mode) => {
+      const analysis = result(mode);
+      const highlights = buildHighlights(analysis, transactions);
+      for (const label of [
+        "Anomalies",
+        "Recurring",
+        "Today",
+        "Highest",
+        "Groceries",
+      ]) {
+        expect(buildHighlights({ ...analysis, label }, transactions)).toEqual(
+          highlights,
+        );
+      }
+    },
+  );
+
+  it.each(["anomalies", "recurring", "search"] as const)(
     "returns no highlights for empty %s matches",
     (mode) => {
       expect(
         buildHighlights(
-          { mode, matches: [], summary: "No matches." },
+          { mode, label: "Groceries", matches: [], summary: "No matches." },
           transactions,
         ).size,
       ).toBe(0);
@@ -367,6 +448,7 @@ describe("buildHighlights", () => {
         buildHighlights(
           {
             mode,
+            label: "Groceries",
             matches: [
               { transaction_id: "TXN999", reason: "Unknown merchant." },
             ],
@@ -382,6 +464,7 @@ describe("buildHighlights", () => {
     const highlights = buildHighlights(
       {
         mode: "recurring",
+        label: "Recurring",
         matches: [{ transaction_id: "TXN001", reason: "" }],
         summary: "Recurring merchant.",
       },

@@ -79,12 +79,20 @@ export function TransactionList() {
   const [restartError, setRestartError] = useState<string | null>(null);
   const [openTools, setOpenTools] = useState<Set<string>>(new Set());
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [selectedMerchants, setSelectedMerchants] =
+    useState<Set<string> | null>(null);
+  const [showAllTransactions, setShowAllTransactions] = useState(false);
 
   const agent = useEveAgent({
     onEvent(event) {
       if (event.type === "result.completed") {
         const parsed = analysisSchema.safeParse(event.data.result);
-        if (parsed.success) setResult(parsed.data);
+        if (parsed.success) {
+          setResult(parsed.data);
+          setSelectedMerchants(null);
+          setShowAllTransactions(false);
+          setExpandedId(null);
+        }
       }
     },
   });
@@ -97,11 +105,45 @@ export function TransactionList() {
   const merchantLegend = [
     ...new Map(
       [...highlights.values()].map((highlight) => [
-        highlight.merchant,
+        highlight.merchant.trim().toLowerCase(),
         highlight,
       ]),
     ).values(),
   ];
+
+  const activeMerchants =
+    selectedMerchants ??
+    new Set(
+      merchantLegend.map((highlight) =>
+        highlight.merchant.trim().toLowerCase(),
+      ),
+    );
+  const isRecurringResult = result?.mode === "recurring";
+  const matchingTransactions = transactions.filter((transaction) => {
+    const highlight = highlights.get(transaction.id);
+    return (
+      highlight &&
+      (!isRecurringResult ||
+        activeMerchants.has(highlight.merchant.trim().toLowerCase()))
+    );
+  });
+  const visibleTransactions =
+    result && !showAllTransactions ? matchingTransactions : transactions;
+  const highlightedCount = showAllTransactions
+    ? highlights.size
+    : matchingTransactions.length;
+
+  function toggleMerchant(merchant: string) {
+    setShowAllTransactions(false);
+    setSelectedMerchants((previous) => {
+      const next = new Set(previous ?? activeMerchants);
+      const key = merchant.trim().toLowerCase();
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+    setExpandedId(null);
+  }
 
   // keep transaction payloads out of the visible activity log
   const logItems = useMemo<LogItem[]>(() => {
@@ -169,6 +211,8 @@ export function TransactionList() {
 
     setExpandedId(null);
     setResult(null);
+    setSelectedMerchants(null);
+    setShowAllTransactions(false);
     setOpenTools(new Set());
     setDetailsOpen(true);
     setRestartError(null);
@@ -200,6 +244,8 @@ export function TransactionList() {
       setPrompt("");
       setSubmittedPrompt("");
       setResult(null);
+      setSelectedMerchants(null);
+      setShowAllTransactions(false);
       setExpandedId(null);
       setOpenTools(new Set());
       setDetailsOpen(true);
@@ -222,35 +268,37 @@ export function TransactionList() {
         className="cursor-pointer overflow-hidden rounded-lg border border-border bg-card/50"
       >
         <div className="flex flex-wrap items-center gap-3 px-4 py-3">
-          <Bot
-            aria-hidden="true"
-            className="h-4 w-4 shrink-0 text-muted-foreground"
-          />
-          <div className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-            <p className="min-w-0 truncate font-medium text-sm">
-              {submittedPrompt || "Ask about your transactions"}
-            </p>
-            {(submittedPrompt ||
-              isLoading ||
-              isRestarting ||
-              status === "resuming" ||
-              status === "error" ||
-              restartError) && (
-              <span
-                role="status"
-                aria-live="polite"
-                aria-atomic="true"
-                className="inline-flex shrink-0 items-center gap-2 text-muted-foreground text-xs"
-              >
-                {(isLoading || isRestarting || status === "resuming") && (
-                  <Loader2
-                    aria-hidden="true"
-                    className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none"
-                  />
-                )}
-                {logStatus}
-              </span>
-            )}
+          <div className="flex min-w-0 flex-1 basis-full items-center gap-3 sm:basis-auto">
+            <Bot
+              aria-hidden="true"
+              className="h-4 w-4 shrink-0 text-muted-foreground"
+            />
+            <div className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+              <p className="min-w-0 truncate font-medium text-sm">
+                {submittedPrompt || "Ask about your transactions"}
+              </p>
+              {(submittedPrompt ||
+                isLoading ||
+                isRestarting ||
+                status === "resuming" ||
+                status === "error" ||
+                restartError) && (
+                <span
+                  role="status"
+                  aria-live="polite"
+                  aria-atomic="true"
+                  className="inline-flex shrink-0 items-center gap-2 text-muted-foreground text-xs"
+                >
+                  {(isLoading || isRestarting || status === "resuming") && (
+                    <Loader2
+                      aria-hidden="true"
+                      className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none"
+                    />
+                  )}
+                  {logStatus}
+                </span>
+              )}
+            </div>
           </div>
           <div className="ml-auto flex shrink-0 items-center gap-1">
             {submittedPrompt && (
@@ -298,10 +346,7 @@ export function TransactionList() {
                   }}
                 >
                   <div className="p-4">
-                    <label
-                      htmlFor={promptId}
-                      className="mb-3 block font-medium text-sm"
-                    >
+                    <label htmlFor={promptId} className="sr-only">
                       Ask about your transactions
                     </label>
                     <textarea
@@ -381,28 +426,58 @@ export function TransactionList() {
                     {result.summary}
                   </p>
                   <p className="text-muted-foreground text-xs">
-                    {highlights.size === 0
-                      ? "No matching transactions."
-                      : `${highlights.size} ${highlights.size === 1 ? "transaction highlighted" : "transactions highlighted"} below. Select a highlighted row's details for the reason.`}
+                    {highlightedCount === 0
+                      ? isRecurringResult && merchantLegend.length > 0
+                        ? "No merchants selected."
+                        : "No matching transactions."
+                      : `${highlightedCount} ${highlightedCount === 1 ? "transaction highlighted" : "transactions highlighted"} below. Select a highlighted row's details for the reason.`}
                   </p>
                   {result.mode === "recurring" && merchantLegend.length > 0 && (
                     <ul
                       aria-label="Recurring merchants"
                       className="flex flex-wrap gap-x-4 gap-y-2"
                     >
-                      {merchantLegend.map((highlight) => (
-                        <li
-                          key={highlight.merchant}
-                          className="flex items-center gap-2 text-muted-foreground text-xs"
-                        >
-                          <span
-                            aria-hidden="true"
-                            className="h-2.5 w-2.5 rounded-full"
-                            style={{ backgroundColor: highlight.color }}
-                          />
-                          {highlight.merchant}
-                        </li>
-                      ))}
+                      {merchantLegend.map((highlight) => {
+                        const selected = activeMerchants.has(
+                          highlight.merchant.trim().toLowerCase(),
+                        );
+                        return (
+                          <li key={highlight.merchant}>
+                            <button
+                              type="button"
+                              aria-pressed={selected}
+                              onClick={() => toggleMerchant(highlight.merchant)}
+                              className={cn(
+                                "inline-flex min-h-11 items-center gap-2 rounded-md border px-3 py-2 text-xs transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-9",
+                                selected
+                                  ? "opacity-100"
+                                  : "opacity-50 hover:opacity-100",
+                              )}
+                              style={{
+                                borderColor: selected
+                                  ? `color-mix(in srgb, ${highlight.color} 65%, transparent)`
+                                  : "var(--border)",
+                                backgroundColor: selected
+                                  ? `color-mix(in srgb, ${highlight.color} 15%, transparent)`
+                                  : undefined,
+                              }}
+                            >
+                              <span
+                                aria-hidden="true"
+                                className="h-2.5 w-2.5 rounded-full"
+                                style={{ backgroundColor: highlight.color }}
+                              />
+                              {highlight.merchant}
+                              {selected && (
+                                <Check
+                                  aria-hidden="true"
+                                  className="h-3.5 w-3.5"
+                                />
+                              )}
+                            </button>
+                          </li>
+                        );
+                      })}
                     </ul>
                   )}
                 </section>
@@ -448,11 +523,48 @@ export function TransactionList() {
         </section>
       </div>
 
-      <div className="flex items-center justify-between">
-        <h2 className="font-semibold text-lg">Transactions</h2>
-        <span className="text-muted-foreground text-sm">
-          {transactions.length} transactions
-        </span>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-baseline gap-3">
+          <h2 className="font-semibold text-lg">Transactions</h2>
+          <span
+            aria-live="polite"
+            aria-atomic="true"
+            className="text-muted-foreground text-xs tabular-nums"
+          >
+            {result
+              ? `${visibleTransactions.length} of ${transactions.length} transactions`
+              : `${transactions.length} transactions`}
+          </span>
+        </div>
+        {result && (
+          <fieldset className="inline-flex min-w-0 max-w-full rounded-lg border border-border bg-muted/30 p-1">
+            <legend className="sr-only">Transaction view</legend>
+            {[
+              { label: result.label, showAll: false },
+              { label: "All transactions", showAll: true },
+            ].map(({ label, showAll }) => (
+              <button
+                key={showAll ? "all" : "filtered"}
+                type="button"
+                title={label}
+                aria-pressed={showAllTransactions === showAll}
+                onClick={() => {
+                  setShowAllTransactions(showAll);
+                  setExpandedId(null);
+                }}
+                className={cn(
+                  "min-h-11 min-w-0 truncate rounded-md px-3 py-2 font-medium text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-9",
+                  showAll && "shrink-0",
+                  showAllTransactions === showAll
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted/40 hover:text-foreground",
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </fieldset>
+        )}
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-border bg-card/50 backdrop-blur-sm">
@@ -475,7 +587,19 @@ export function TransactionList() {
             </tr>
           </thead>
           <tbody>
-            {transactions.map((txn) => {
+            {visibleTransactions.length === 0 && (
+              <tr>
+                <td
+                  colSpan={5}
+                  className="px-4 py-8 text-center text-muted-foreground text-sm"
+                >
+                  {isRecurringResult && merchantLegend.length > 0
+                    ? "Select a merchant in the agent details to show transactions."
+                    : "No matching transactions. Switch to All transactions to see the full list."}
+                </td>
+              </tr>
+            )}
+            {visibleTransactions.map((txn) => {
               const highlight = highlights.get(txn.id);
               const isExpanded = expandedId === txn.id;
 

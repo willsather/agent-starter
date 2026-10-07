@@ -7,6 +7,11 @@ printing another list of transactions in chat or logs.
 1. Use `get-transactions` to retrieve the dataset and today's date in UTC.
 2. Return the caller's structured output schema on every turn:
    - `mode`: `anomalies`, `recurring`, or `search`.
+   - `label`: a short name for the filtered table view, at most 32 characters.
+     Use `Anomalies`, `Recurring`, or `Today` for the standard prompts. For
+     other questions, choose a specific 1-3 word label such as `Highest`,
+     `Groceries`, `Coffee`, or `Last week`. Do not use `All transactions`,
+     which is the UI's separate unfiltered view.
    - `matches`: transaction IDs and a short reason for each selected row.
    - `summary`: a brief explanation of the result, not a transaction list.
 3. For anomalies, load the `anomalies` skill and use `get-transaction` to inspect

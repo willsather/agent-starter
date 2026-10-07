@@ -4,6 +4,14 @@ import type { Transaction } from "./anomaly";
 
 export const analysisSchema = z.object({
   mode: z.enum(["anomalies", "recurring", "search"]),
+  label: z
+    .string()
+    .trim()
+    .min(1)
+    .max(32)
+    .describe(
+      "Short 1-3 word name for the filtered transaction view, such as Anomalies, Recurring, Today, Highest, or Groceries. Do not use All transactions.",
+    ),
   matches: z.array(
     z.object({
       transaction_id: z.string(),

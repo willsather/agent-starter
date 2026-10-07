@@ -152,6 +152,7 @@ describe("TransactionList Eve integration", () => {
     );
     completeResult({
       mode: "anomalies",
+      label: "Anomalies",
       matches: [{ transaction_id: "TXN011", reason: "Previous reason." }],
       summary: "Previous summary.",
     });
@@ -428,6 +429,7 @@ describe("TransactionList Eve integration", () => {
     );
     completeResult({
       mode: "search",
+      label: "Today",
       matches: [],
       summary: "No transactions match today in UTC.",
     });
@@ -466,6 +468,7 @@ describe("TransactionList Eve integration", () => {
         data: {
           result: {
             mode: "anomalies",
+            label: "Anomalies",
             matches: [
               { transaction_id: "TXN011", reason: "Unusually large payment." },
             ],
@@ -575,6 +578,7 @@ describe("TransactionList Eve integration", () => {
       act(() => root.render(<TransactionList />));
       completeResult({
         mode,
+        label: "Groceries",
         matches: [
           { transaction_id: "TXN018", reason: "Review this payment." },
           { transaction_id: "TXN999", reason: "Unknown transaction reason." },
@@ -622,6 +626,7 @@ describe("TransactionList Eve integration", () => {
     act(() => root.render(<TransactionList />));
     const result: AnalysisResult = {
       mode: "recurring",
+      label: "Recurring",
       matches: [
         { transaction_id: "TXN004", reason: "Netflix renews every 30 days." },
         { transaction_id: "TXN009", reason: "Spotify renews every 30 days." },
@@ -702,6 +707,7 @@ describe("TransactionList Eve integration", () => {
       const id = mode === "recurring" ? "TXN004" : "TXN011";
       completeResult({
         mode,
+        label: "Groceries",
         matches: [{ transaction_id: id, reason: "Previous reason." }],
         summary: "Previous summary.",
       });
@@ -762,6 +768,7 @@ describe("TransactionList Eve integration", () => {
     ]);
     completeResult({
       mode: "recurring",
+      label: "Recurring",
       matches: [
         { transaction_id: "TXN004", reason: "30-day Netflix renewals." },
       ],
@@ -811,6 +818,7 @@ describe("TransactionList Eve integration", () => {
         data: {
           result: {
             mode: "search",
+            label: "Today",
             matches: [{ transaction_id: "TXN011" }],
             summary: "Invalid result.",
           },
@@ -852,6 +860,7 @@ describe("TransactionList Eve integration", () => {
       expectNoComposer();
       completeResult({
         mode: "search",
+        label: "Today",
         matches: [],
         summary: "No payments match.",
       });
@@ -892,6 +901,7 @@ describe("TransactionList Eve integration", () => {
     }
     completeResult({
       mode: "recurring",
+      label: "Recurring",
       matches: [{ transaction_id: "TXN004", reason: "30-day renewals." }],
       summary: "Netflix renews regularly.",
     });
@@ -955,6 +965,7 @@ describe("TransactionList Eve integration", () => {
     );
     completeResult({
       mode: "anomalies",
+      label: "Anomalies",
       matches: [{ transaction_id: "TXN011", reason: "Review the amount." }],
       summary: "Review this payment.",
     });
@@ -1329,6 +1340,7 @@ describe("TransactionList Eve integration", () => {
     );
     completeResult({
       mode: "anomalies",
+      label: "Anomalies",
       matches: [],
       summary: "Previous analysis",
     });
