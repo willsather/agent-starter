@@ -6,7 +6,7 @@ import { transactions } from "@/lib/data";
 
 export default defineTool({
   description:
-    "Get the full list of transactions to analyze, including id, date, name, description, and amount for each.",
+    "Get all transactions with their ids, dates, merchants, descriptions, and amounts, plus today's UTC date and verified recurring groups. Compare transaction dates with the returned today value for current-day searches.",
   inputSchema: z.object({}),
   execute: async () => {
     return {

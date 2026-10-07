@@ -590,7 +590,7 @@ describe("TransactionList Eve integration", () => {
       expect(row).not.toBeNull();
       expect(row).toHaveTextContent("Apple Store");
       expect(row).toHaveTextContent("iPhone case");
-      expect(row).toHaveTextContent("2025-01-19");
+      expect(row).toHaveTextContent("2026-08-10");
       expect(row).toHaveTextContent(label);
       expect(row?.className).toContain(`bg-${color}-`);
       expect(getByText(row as HTMLElement, label).className).toContain(

@@ -23,4 +23,20 @@ it("returns the actual current UTC date alongside the sample transactions", asyn
   expect(result.transactions).toHaveLength(58);
   expect(result.count).toBe(result.transactions.length);
   expect(result.recurringGroups).toHaveLength(4);
+  expect(
+    result.transactions
+      .filter((transaction) => transaction.date === result.today)
+      .map((transaction) => transaction.id)
+      .sort(),
+  ).toEqual(["TXN049", "TXN050", "TXN056"]);
+  expect(
+    result.transactions.every(
+      (transaction) => transaction.date <= result.today,
+    ),
+  ).toBe(true);
+  expect(
+    result.transactions.every((transaction) =>
+      transaction.date.startsWith("2026-"),
+    ),
+  ).toBe(true);
 });
