@@ -1,5 +1,5 @@
-import { defineAgent } from "experimental-ash";
+import { defineAgent } from "eve";
 
 export default defineAgent({
-  model: "openai/gpt-5.6-luna",
+  model: "openai/gpt-6-luna",
 });

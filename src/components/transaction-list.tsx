@@ -1,29 +1,35 @@
 "use client";
 
-import { useAshAgent } from "experimental-ash/react";
+import { useEveAgent } from "eve/react";
 import {
   AlertTriangle,
+  ArrowUp,
   BookOpen,
   Bot,
+  CalendarDays,
   Check,
   ChevronDown,
   ChevronRight,
   CircleX,
   FileSearch,
   Loader2,
+  Repeat2,
+  RotateCcw,
   Table2,
-  Terminal,
   Wrench,
 } from "lucide-react";
-import type { ComponentType } from "react";
-import { useMemo, useState } from "react";
+import type { ComponentType, CSSProperties, PointerEvent } from "react";
+import { useId, useMemo, useState } from "react";
 import { Streamdown } from "streamdown";
 
-import { type AnomalyResult, anomalySchema } from "@/lib/anomaly";
+import {
+  type AnalysisResult,
+  analysisSchema,
+  buildHighlights,
+  type RowHighlight,
+} from "@/lib/analysis";
 import { transactions } from "@/lib/data";
 import { cn } from "@/lib/utils";
-
-import { DetectButton } from "./detect-button";
 
 type ToolLogItem = {
   kind: "tool";
@@ -37,22 +43,48 @@ type ToolLogItem = {
   state: string;
 };
 
-type TextLogItem = { kind: "text"; id: string; text: string };
-
-type LogItem = ToolLogItem | TextLogItem;
+type LogItem = ToolLogItem;
 
 type IconType = ComponentType<{ className?: string }>;
 
-export function TransactionList() {
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [showLog, setShowLog] = useState(false);
-  const [openTools, setOpenTools] = useState<Set<string>>(new Set());
-  const [result, setResult] = useState<AnomalyResult | null>(null);
+const suggestedPrompts = [
+  {
+    prompt: "Find anomalies",
+    Icon: AlertTriangle,
+    accent:
+      "border-red-500/40 bg-red-500/10 text-red-300 hover:border-red-400/70 hover:bg-red-500/20",
+  },
+  {
+    prompt: "Find recurring transactions",
+    Icon: Repeat2,
+    accent:
+      "border-blue-500/40 bg-blue-500/15 text-blue-300 hover:border-blue-400/70 hover:bg-blue-500/25",
+  },
+  {
+    prompt: "Find today's transactions",
+    Icon: CalendarDays,
+    accent:
+      "border-yellow-500/40 bg-yellow-500/10 text-yellow-200 hover:border-yellow-400/70 hover:bg-yellow-500/20",
+  },
+];
 
-  const agent = useAshAgent({
+export function TransactionList() {
+  const logId = useId();
+  const promptId = useId();
+  const [prompt, setPrompt] = useState("");
+  const [submittedPrompt, setSubmittedPrompt] = useState("");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(true);
+  const [isRestarting, setIsRestarting] = useState(false);
+  const [restartError, setRestartError] = useState<string | null>(null);
+  const [openTools, setOpenTools] = useState<Set<string>>(new Set());
+  const [result, setResult] = useState<AnalysisResult | null>(null);
+
+  const agent = useEveAgent({
     onEvent(event) {
       if (event.type === "result.completed") {
-        setResult(event.data.result as AnomalyResult);
+        const parsed = analysisSchema.safeParse(event.data.result);
+        if (parsed.success) setResult(parsed.data);
       }
     },
   });
@@ -61,30 +93,32 @@ export function TransactionList() {
   const isLoading = status === "submitted" || status === "streaming";
   const isStreaming = status === "streaming";
 
-  const anomalyMap = new Map(
-    result?.anomalies.map((a) => [a.transaction_id, a.reason]) ?? [],
-  );
+  const highlights = buildHighlights(result, transactions);
+  const merchantLegend = [
+    ...new Map(
+      [...highlights.values()].map((highlight) => [
+        highlight.merchant,
+        highlight,
+      ]),
+    ).values(),
+  ];
 
-  // build an ordered log of assistant text and tool/action calls
+  // keep transaction payloads out of the visible activity log
   const logItems = useMemo<LogItem[]>(() => {
     const items: LogItem[] = [];
-    let textCount = 0;
-    for (const message of data.messages) {
+    const latestUserIndex = data.messages.findLastIndex(
+      (message) => message.role === "user",
+    );
+    for (const message of data.messages.slice(latestUserIndex + 1)) {
       if (message.role !== "assistant") continue;
       for (const part of message.parts) {
-        if (part.type === "text" && part.text.trim()) {
-          items.push({
-            kind: "text",
-            id: `text-${textCount++}`,
-            text: part.text,
-          });
-        } else if (part.type === "dynamic-tool") {
+        if (part.type === "dynamic-tool") {
           items.push({
             kind: "tool",
             id: part.toolCallId,
             toolName: part.toolName,
-            actionKind: part.toolMetadata?.ash?.kind ?? "tool-call",
-            name: part.toolMetadata?.ash?.name,
+            actionKind: part.toolMetadata?.eve?.kind ?? "tool-call",
+            name: part.toolMetadata?.eve?.name,
             input: part.input,
             output: part.state === "output-available" ? part.output : undefined,
             errorText:
@@ -97,6 +131,29 @@ export function TransactionList() {
     return items;
   }, [data.messages]);
 
+  const activeTool = logItems.findLast(
+    (item): item is ToolLogItem =>
+      item.kind === "tool" &&
+      !["output-available", "output-error", "output-denied"].includes(
+        item.state,
+      ),
+  );
+  const logStatus = isRestarting
+    ? "Restarting…"
+    : status === "error" || restartError
+      ? "Analysis failed"
+      : status === "resuming"
+        ? "Restoring session…"
+        : status === "submitted"
+          ? "Starting analysis…"
+          : isLoading
+            ? activeTool
+              ? `${toolPresentation(activeTool).label}…`
+              : "Analyzing transactions…"
+            : result
+              ? "Analysis complete"
+              : "Ready";
+
   function toggleTool(id: string) {
     setOpenTools((prev) => {
       const next = new Set(prev);
@@ -106,31 +163,299 @@ export function TransactionList() {
     });
   }
 
-  function detectAnomalies() {
+  function sendPrompt(value = prompt) {
+    const message = value.trim();
+    if (!message || isLoading || status === "resuming" || isRestarting) return;
+
     setExpandedId(null);
     setResult(null);
     setOpenTools(new Set());
-    setShowLog(true);
-    agent.reset();
-    agent.sendMessage("Analyze the transactions for anomalies.", {
-      outputSchema: anomalySchema,
-    });
+    setDetailsOpen(true);
+    setRestartError(null);
+    setSubmittedPrompt(message);
+    setPrompt("");
+    void agent.send(message, { outputSchema: analysisSchema });
+  }
+
+  function toggleDetailsFromBox(event: PointerEvent<HTMLDivElement>) {
+    if (event.button !== 0 || window.getSelection()?.toString()) return;
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    if (
+      target.closest(
+        "button, a, input, textarea, select, form, pre, [role='button']",
+      )
+    )
+      return;
+    setDetailsOpen((open) => !open);
+  }
+
+  async function restartAgent() {
+    if (isRestarting) return;
+    setIsRestarting(true);
+    setRestartError(null);
+    try {
+      if (isLoading || status === "resuming") await agent.cancel();
+      agent.reset();
+      setPrompt("");
+      setSubmittedPrompt("");
+      setResult(null);
+      setExpandedId(null);
+      setOpenTools(new Set());
+      setDetailsOpen(true);
+      requestAnimationFrame(() => document.getElementById(promptId)?.focus());
+    } catch (cause) {
+      setRestartError(
+        cause instanceof Error ? cause.message : "Unable to restart the agent.",
+      );
+      setDetailsOpen(true);
+    } finally {
+      setIsRestarting(false);
+    }
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="font-semibold text-lg">Transactions</h2>
-        <DetectButton onDetect={detectAnomalies} loading={isLoading} />
+      <div
+        data-agent-box=""
+        onPointerUp={toggleDetailsFromBox}
+        className="cursor-pointer overflow-hidden rounded-lg border border-border bg-card/50"
+      >
+        <div className="flex flex-wrap items-center gap-3 px-4 py-3">
+          <Bot
+            aria-hidden="true"
+            className="h-4 w-4 shrink-0 text-muted-foreground"
+          />
+          <div className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+            <p className="min-w-0 truncate font-medium text-sm">
+              {submittedPrompt || "Ask about your transactions"}
+            </p>
+            {(submittedPrompt ||
+              isLoading ||
+              isRestarting ||
+              status === "resuming" ||
+              status === "error" ||
+              restartError) && (
+              <span
+                role="status"
+                aria-live="polite"
+                aria-atomic="true"
+                className="inline-flex shrink-0 items-center gap-2 text-muted-foreground text-xs"
+              >
+                {(isLoading || isRestarting || status === "resuming") && (
+                  <Loader2
+                    aria-hidden="true"
+                    className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none"
+                  />
+                )}
+                {logStatus}
+              </span>
+            )}
+          </div>
+          <div className="ml-auto flex shrink-0 items-center gap-1">
+            {submittedPrompt && (
+              <button
+                type="button"
+                onClick={() => void restartAgent()}
+                disabled={isRestarting}
+                className="inline-flex min-h-11 items-center gap-2 rounded-md px-3 py-2 text-muted-foreground text-xs hover:bg-muted/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />
+                Restart
+              </button>
+            )}
+            <button
+              type="button"
+              aria-expanded={detailsOpen}
+              aria-controls={logId}
+              onClick={() => setDetailsOpen((open) => !open)}
+              className="inline-flex min-h-11 items-center gap-2 rounded-md px-3 py-2 text-muted-foreground text-xs hover:bg-muted/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {detailsOpen ? "Hide details" : "Show details"}
+              <ChevronDown
+                aria-hidden="true"
+                className={cn(
+                  "h-4 w-4 transition-transform motion-reduce:transition-none",
+                  detailsOpen && "rotate-180",
+                )}
+              />
+            </button>
+          </div>
+        </div>
+        <section
+          id={logId}
+          aria-label="Agent details"
+          hidden={!detailsOpen}
+          className="border-border border-t"
+        >
+          {detailsOpen && (
+            <>
+              {!submittedPrompt && (
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    sendPrompt();
+                  }}
+                >
+                  <div className="p-4">
+                    <label
+                      htmlFor={promptId}
+                      className="mb-3 block font-medium text-sm"
+                    >
+                      Ask about your transactions
+                    </label>
+                    <textarea
+                      id={promptId}
+                      name="prompt"
+                      rows={3}
+                      value={prompt}
+                      onChange={(event) => setPrompt(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (
+                          event.key === "Enter" &&
+                          !event.shiftKey &&
+                          !event.nativeEvent.isComposing
+                        ) {
+                          event.preventDefault();
+                          sendPrompt();
+                        }
+                      }}
+                      placeholder="Ask a question or choose a suggestion below…"
+                      className="block max-h-64 min-h-24 w-full resize-y rounded-md border border-input bg-background p-3 text-base placeholder:text-muted-foreground placeholder:text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-3 border-border border-t px-4 py-3 sm:flex-row sm:items-center">
+                    <div className="flex min-w-0 flex-1 flex-wrap gap-2">
+                      {suggestedPrompts.map(
+                        ({ prompt: suggestion, Icon, accent }) => (
+                          <button
+                            key={suggestion}
+                            type="button"
+                            onClick={() => sendPrompt(suggestion)}
+                            disabled={
+                              isLoading || status === "resuming" || isRestarting
+                            }
+                            className={cn(
+                              "inline-flex min-h-11 items-center gap-2 rounded-md border px-3 py-2 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-9",
+                              accent,
+                            )}
+                          >
+                            <Icon
+                              aria-hidden="true"
+                              className="h-3.5 w-3.5 shrink-0"
+                            />
+                            {suggestion}
+                          </button>
+                        ),
+                      )}
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={
+                        !prompt.trim() ||
+                        isLoading ||
+                        status === "resuming" ||
+                        isRestarting
+                      }
+                      className="inline-flex min-h-11 items-center gap-2 self-end rounded-md bg-primary px-3 py-2 font-medium text-primary-foreground text-sm transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 sm:self-auto"
+                    >
+                      {isLoading ? (
+                        <Loader2
+                          aria-hidden="true"
+                          className="h-4 w-4 animate-spin motion-reduce:animate-none"
+                        />
+                      ) : (
+                        <ArrowUp aria-hidden="true" className="h-4 w-4" />
+                      )}
+                      Send
+                    </button>
+                  </div>
+                </form>
+              )}
+              {result && (
+                <section
+                  aria-label="Agent response"
+                  className="space-y-3 border-border border-t p-4"
+                >
+                  <p className="text-muted-foreground text-sm">
+                    {result.summary}
+                  </p>
+                  <p className="text-muted-foreground text-xs">
+                    {highlights.size === 0
+                      ? "No matching transactions."
+                      : `${highlights.size} ${highlights.size === 1 ? "transaction highlighted" : "transactions highlighted"} below. Select a highlighted row's details for the reason.`}
+                  </p>
+                  {result.mode === "recurring" && merchantLegend.length > 0 && (
+                    <ul
+                      aria-label="Recurring merchants"
+                      className="flex flex-wrap gap-x-4 gap-y-2"
+                    >
+                      {merchantLegend.map((highlight) => (
+                        <li
+                          key={highlight.merchant}
+                          className="flex items-center gap-2 text-muted-foreground text-xs"
+                        >
+                          <span
+                            aria-hidden="true"
+                            className="h-2.5 w-2.5 rounded-full"
+                            style={{ backgroundColor: highlight.color }}
+                          />
+                          {highlight.merchant}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </section>
+              )}
+              {(submittedPrompt ||
+                isLoading ||
+                logItems.length > 0 ||
+                result ||
+                status === "error") && (
+                <section
+                  aria-label="Agent activity"
+                  className="scrollbar-themed max-h-[32rem] space-y-2 overflow-y-auto overscroll-contain border-border border-t p-3"
+                >
+                  {logItems.length === 0 ? (
+                    <p className="px-1 py-3 text-muted-foreground text-sm">
+                      {status === "error"
+                        ? "No activity recorded. Restart to try again."
+                        : "Waiting for agent activity…"}
+                    </p>
+                  ) : (
+                    logItems.map((item) => (
+                      <ToolCard
+                        key={item.id}
+                        item={item}
+                        isOpen={openTools.has(item.id)}
+                        isStreaming={isStreaming}
+                        onToggle={() => toggleTool(item.id)}
+                      />
+                    ))
+                  )}
+                </section>
+              )}
+              {(status === "error" || restartError) && (
+                <p
+                  role="alert"
+                  className="border-border border-t bg-red-500/10 p-4 text-red-400 text-sm"
+                >
+                  {restartError || error?.message || "Analysis failed"}
+                </p>
+              )}
+            </>
+          )}
+        </section>
       </div>
 
-      {status === "error" && (
-        <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-red-500 text-sm">
-          {error?.message ?? "Detection failed"}
-        </div>
-      )}
+      <div className="flex items-center justify-between">
+        <h2 className="font-semibold text-lg">Transactions</h2>
+        <span className="text-muted-foreground text-sm">
+          {transactions.length} transactions
+        </span>
+      </div>
 
-      <div className="overflow-hidden rounded-lg border border-border bg-card/50 backdrop-blur-sm">
+      <div className="overflow-x-auto rounded-lg border border-border bg-card/50 backdrop-blur-sm">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-border border-b bg-muted/30">
@@ -151,16 +476,14 @@ export function TransactionList() {
           </thead>
           <tbody>
             {transactions.map((txn) => {
-              const isAnomaly = anomalyMap.has(txn.id);
-              const reason = anomalyMap.get(txn.id);
+              const highlight = highlights.get(txn.id);
               const isExpanded = expandedId === txn.id;
 
               return (
                 <TransactionRow
                   key={txn.id}
                   transaction={txn}
-                  isAnomaly={isAnomaly}
-                  reason={reason}
+                  highlight={highlight}
                   isExpanded={isExpanded}
                   onToggle={() => setExpandedId(isExpanded ? null : txn.id)}
                 />
@@ -169,59 +492,6 @@ export function TransactionList() {
           </tbody>
         </table>
       </div>
-
-      {/* analysis summary with the log nested inside the same card */}
-      {(result?.summary || logItems.length > 0) && (
-        <div className="overflow-hidden rounded-lg border border-border bg-muted/30">
-          {result?.summary && (
-            <div className="p-4">
-              <h3 className="mb-2 font-medium">Analysis Summary</h3>
-              <p className="text-muted-foreground text-sm">{result.summary}</p>
-            </div>
-          )}
-
-          {logItems.length > 0 && (
-            <div className={cn(result?.summary && "border-border border-t")}>
-              <button
-                type="button"
-                onClick={() => setShowLog((s) => !s)}
-                className="flex w-full items-center gap-2 px-4 py-3 text-left font-medium text-muted-foreground text-sm transition-colors hover:text-foreground"
-              >
-                <Terminal className="h-4 w-4" />
-                Log
-                {isStreaming && (
-                  <span className="ml-1 inline-block h-2 w-2 animate-pulse rounded-full bg-green-500" />
-                )}
-                <ChevronDown
-                  className={cn(
-                    "ml-auto h-4 w-4 transition-transform",
-                    showLog && "rotate-180",
-                  )}
-                />
-              </button>
-              {showLog && (
-                <div className="scrollbar-themed max-h-[32rem] min-h-64 space-y-2 overflow-y-auto border-border border-t p-3">
-                  {logItems.map((item) =>
-                    item.kind === "text" ? (
-                      <div key={item.id} className="px-1">
-                        <Markdown>{item.text}</Markdown>
-                      </div>
-                    ) : (
-                      <ToolCard
-                        key={item.id}
-                        item={item}
-                        isOpen={openTools.has(item.id)}
-                        isStreaming={isStreaming}
-                        onToggle={() => toggleTool(item.id)}
-                      />
-                    ),
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
@@ -230,7 +500,7 @@ function isLoadSkill(item: ToolLogItem): boolean {
   return (
     item.actionKind === "load-skill" ||
     item.toolName === "load_skill" ||
-    item.toolName === "ash:load-skill"
+    item.toolName === "eve:load-skill"
   );
 }
 
@@ -291,10 +561,17 @@ function ToolCard({
 }) {
   const { label, Icon } = toolPresentation(item);
   const summary = inputSummary(item.input);
-  const output = item.errorText ?? formatValue(item.output);
+  const isTransactionTool =
+    item.toolName === "get-transactions" || item.toolName === "get-transaction";
+  const output =
+    item.errorText ??
+    (isTransactionTool && item.state === "output-available"
+      ? item.toolName === "get-transactions"
+        ? "Transactions loaded into the table."
+        : "Transaction details loaded into the table."
+      : formatValue(item.output));
   const input = formatValue(item.input);
-  // load-skill and get-transaction skip the input section entirely
-  const hideInput = isLoadSkill(item) || item.toolName === "get-transaction";
+  const hideInput = isLoadSkill(item) || isTransactionTool;
 
   return (
     <div className="overflow-hidden rounded-md border border-border bg-background/40">
@@ -408,39 +685,68 @@ function formatValue(value: unknown): string {
 
 type TransactionRowProps = {
   transaction: (typeof transactions)[number];
-  isAnomaly: boolean;
-  reason?: string;
+  highlight?: RowHighlight;
   isExpanded: boolean;
   onToggle: () => void;
 };
 
 function TransactionRow({
   transaction,
-  isAnomaly,
-  reason,
+  highlight,
   isExpanded,
   onToggle,
 }: TransactionRowProps) {
-  const { date, name, description, amount } = transaction;
+  const { id, date, name, description, amount } = transaction;
+  const reasonId = useId();
+  const isAnomaly = highlight?.mode === "anomalies";
+  const isRecurring = highlight?.mode === "recurring";
+  const isSearch = highlight?.mode === "search";
+  const label = isAnomaly ? "Anomaly" : isRecurring ? "Recurring" : "Match";
+  const recurringStyle = isRecurring
+    ? ({
+        "--merchant-color": highlight.color,
+        backgroundColor:
+          "color-mix(in srgb, var(--merchant-color) 30%, transparent)",
+      } as CSSProperties)
+    : undefined;
 
   return (
     <>
       <tr
+        data-highlight={highlight?.mode}
+        style={recurringStyle}
         className={cn(
           "border-border border-b transition-colors",
           isAnomaly && "border-red-500/20 bg-red-500/10",
-          isAnomaly && "cursor-pointer hover:bg-red-500/15",
+          isSearch && "border-yellow-500/30 bg-yellow-400/20",
         )}
-        onClick={isAnomaly ? onToggle : undefined}
       >
         <td className="px-4 py-3 font-mono text-muted-foreground">{date}</td>
         <td className="px-4 py-3">
           <span className="flex items-center gap-2">
             {name}
-            {isAnomaly && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-red-500/20 px-2 py-0.5 font-medium text-red-500 text-xs">
-                <AlertTriangle className="h-3 w-3" />
-                Anomaly
+            {highlight && (
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-medium text-xs",
+                  isAnomaly && "bg-red-500/20 text-red-400",
+                  isSearch && "bg-yellow-400/20 text-yellow-300",
+                  isRecurring && "bg-background/30",
+                )}
+                style={
+                  isRecurring
+                    ? { color: highlight.color.replace("-700", "-900") }
+                    : undefined
+                }
+              >
+                {isAnomaly ? (
+                  <AlertTriangle aria-hidden="true" className="h-3 w-3" />
+                ) : isRecurring ? (
+                  <Repeat2 aria-hidden="true" className="h-3 w-3" />
+                ) : (
+                  <Check aria-hidden="true" className="h-3 w-3" />
+                )}
+                {label}
               </span>
             )}
           </span>
@@ -450,26 +756,39 @@ function TransactionRow({
           ${amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
         </td>
         <td className="px-4 py-3">
-          {isAnomaly && (
-            <ChevronDown
-              className={cn(
-                "h-4 w-4 text-muted-foreground transition-transform",
-                isExpanded && "rotate-180",
-              )}
-            />
+          {highlight && (
+            <button
+              type="button"
+              aria-label={`${isExpanded ? "Hide" : "Show"} reason for ${id}`}
+              aria-expanded={isExpanded}
+              aria-controls={reasonId}
+              onClick={onToggle}
+              className="flex h-9 w-9 items-center justify-center rounded-md hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <ChevronDown
+                aria-hidden="true"
+                className={cn(
+                  "h-4 w-4 text-muted-foreground transition-transform motion-reduce:transition-none",
+                  isExpanded && "rotate-180",
+                )}
+              />
+            </button>
           )}
         </td>
       </tr>
-      {isAnomaly && isExpanded && (
-        <tr className="border-red-500/20 border-b bg-red-500/5">
-          <td colSpan={5} className="px-4 py-3">
-            <div className="flex items-start gap-2 text-sm">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
-              <div>
-                <span className="font-medium text-red-500">Reason: </span>
-                <span className="text-muted-foreground">{reason}</span>
-              </div>
-            </div>
+      {highlight && isExpanded && (
+        <tr
+          id={reasonId}
+          style={recurringStyle}
+          className={cn(
+            "border-border border-b",
+            isAnomaly && "bg-red-500/5",
+            isSearch && "bg-yellow-400/10",
+          )}
+        >
+          <td colSpan={5} className="px-4 py-3 text-sm">
+            <span className="font-medium">Reason: </span>
+            <span className="text-muted-foreground">{highlight.reason}</span>
           </td>
         </tr>
       )}

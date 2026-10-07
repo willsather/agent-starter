@@ -1,0 +1,13 @@
+allowBuilds:
+  '@swc/core': true
+  esbuild: true
+
+ignoredOptionalDependencies:
+  - '@mongodb-js/zstd'
+  - node-liblzma
+
+minimumReleaseAge: 0
+
+overrides:
+  rolldown: 1.2.5
+  sharp: 0.35.3

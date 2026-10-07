@@ -8,7 +8,14 @@ export default defineConfig({
     ...configDefaults,
     globals: true,
     environment: "jsdom",
-    exclude: ["node_modules", "e2e"],
+    exclude: [
+      ...configDefaults.exclude,
+      ".eve/**",
+      ".ash/**",
+      ".output/**",
+      ".next/**",
+      "e2e/**",
+    ],
     setupFiles: ["./vitest.setup.ts"],
   },
   resolve: {

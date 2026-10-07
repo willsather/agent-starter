@@ -355,7 +355,63 @@ export const transactions: Transaction[] = [
     description: "Coffee and donuts",
     amount: 11.23,
   },
-];
+  {
+    id: "TXN051",
+    date: "2025-02-04",
+    name: "Netflix",
+    description: "30-day subscription renewal",
+    amount: 15.99,
+  },
+  {
+    id: "TXN052",
+    date: "2025-03-06",
+    name: "Netflix",
+    description: "30-day subscription renewal",
+    amount: 15.99,
+  },
+  {
+    id: "TXN053",
+    date: "2025-02-09",
+    name: "Spotify",
+    description: "30-day subscription renewal",
+    amount: 10.99,
+  },
+  {
+    id: "TXN054",
+    date: "2025-03-11",
+    name: "Spotify",
+    description: "30-day subscription renewal",
+    amount: 10.99,
+  },
+  {
+    id: "TXN055",
+    date: "2025-02-16",
+    name: "Verizon",
+    description: "30-day phone bill renewal",
+    amount: 85,
+  },
+  {
+    id: "TXN056",
+    date: "2025-03-18",
+    name: "Verizon",
+    description: "30-day phone bill renewal",
+    amount: 85,
+  },
+  {
+    id: "TXN057",
+    date: "2025-01-25",
+    name: "Planet Fitness",
+    description: "Weekly gym membership renewal",
+    amount: 24.99,
+  },
+  {
+    id: "TXN058",
+    date: "2025-02-01",
+    name: "Planet Fitness",
+    description: "Weekly gym membership renewal",
+    amount: 24.99,
+  },
+].sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
 
 export function transactionsToCsv(): string {
   const header = "id,date,name,description,amount";

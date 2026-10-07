@@ -1,9 +1,9 @@
-import { tool } from "ai";
+import { defineTool } from "eve/tools";
 import { z } from "zod";
 
 import { transactions } from "@/lib/data";
 
-export default tool({
+export default defineTool({
   description:
     "Get the full details of a single transaction by its id, plus dataset context (median and max amount) to help judge whether it is anomalous.",
   inputSchema: z.object({

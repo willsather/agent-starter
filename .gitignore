@@ -23,6 +23,7 @@ yarn-error.log*
 
 # next.js
 .next
+.output
 dist
 out
 

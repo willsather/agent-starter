@@ -1,4 +1,4 @@
-# AI Agent Starter
+# Agent Starter
 
 ## Getting Started
 

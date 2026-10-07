@@ -4,6 +4,14 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  --ds-blue-700: hsla(212, 100%, 48%, 1);
+  --ds-blue-900: hsla(210, 100%, 66%, 1);
+  --ds-teal-700: hsla(173, 80%, 36%, 1);
+  --ds-teal-900: hsla(174, 90%, 41%, 1);
+  --ds-purple-700: hsla(272, 51%, 54%, 1);
+  --ds-purple-900: hsla(275, 80%, 71%, 1);
+  --ds-pink-700: hsla(336, 80%, 58%, 1);
+  --ds-pink-900: hsla(341, 90%, 67%, 1);
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
