@@ -8,6 +8,8 @@ import {
   within,
 } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
+import type { EveMessage, SessionStreamEvent } from "eve/client";
+import type { UseEveAgentReturn } from "eve/react";
 import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -23,7 +25,7 @@ import { TransactionList } from "./transaction-list";
 
 const eve = vi.hoisted(() => ({
   send: vi.fn().mockResolvedValue(undefined),
-  reset: vi.fn(),
+  newSession: vi.fn(),
   cancel: vi.fn().mockResolvedValue(undefined),
   useEveAgent: vi.fn(),
 }));
@@ -50,11 +52,11 @@ describe("TransactionList Eve integration", () => {
     document.body.append(container);
     root = createRoot(container);
     eve.useEveAgent.mockReturnValue({
-      status: "ready",
+      status: "idle",
       error: null,
-      data: { messages: [] },
+      messages: [],
       send: eve.send,
-      reset: eve.reset,
+      newSession: eve.newSession,
       cancel: eve.cancel,
     });
   });
@@ -171,7 +173,7 @@ describe("TransactionList Eve integration", () => {
     await act(async () =>
       fireEvent.click(getByRole(container, "button", { name: "Restart" })),
     );
-    expect(eve.reset).toHaveBeenCalledOnce();
+    expect(eve.newSession).toHaveBeenCalledOnce();
     expect(eve.send).toHaveBeenCalledOnce();
     expectReasonIds([]);
     expect(getComposer()).toHaveValue("");
@@ -217,7 +219,7 @@ describe("TransactionList Eve integration", () => {
       expect(restart).toBeEnabled();
       await act(async () => fireEvent.click(restart));
       expect(eve.cancel).toHaveBeenCalledOnce();
-      expect(eve.reset).not.toHaveBeenCalled();
+      expect(eve.newSession).not.toHaveBeenCalled();
       expect(
         getByRole(container, "button", { name: "Restart" }),
       ).toBeDisabled();
@@ -236,9 +238,9 @@ describe("TransactionList Eve integration", () => {
       ).toBeDisabled();
       expect(eve.send).toHaveBeenCalledOnce();
       await act(async () => finishCancellation());
-      expect(eve.reset).toHaveBeenCalledOnce();
+      expect(eve.newSession).toHaveBeenCalledOnce();
       expect(eve.cancel.mock.invocationCallOrder[0]).toBeLessThan(
-        eve.reset.mock.invocationCallOrder[0],
+        eve.newSession.mock.invocationCallOrder[0],
       );
       expect(queryByRole(container, "button", { name: "Restart" })).toBeNull();
       expect(
@@ -273,7 +275,7 @@ describe("TransactionList Eve integration", () => {
       expect(eve.send).toHaveBeenCalledExactlyOnceWith(suggestion, {
         outputSchema: analysisSchema,
       });
-      expect(eve.reset).not.toHaveBeenCalled();
+      expect(eve.newSession).not.toHaveBeenCalled();
       expect(queryByRole(container, "textbox")).toBeNull();
       expect(queryByRole(container, "button", { name: "Send" })).toBeNull();
       expect(getByText(container, suggestion)).toBeInTheDocument();
@@ -317,11 +319,11 @@ describe("TransactionList Eve integration", () => {
     ).toBeVisible();
     expectNoComposer();
     expect(eve.send).toHaveBeenCalledOnce();
-    expect(eve.reset).not.toHaveBeenCalled();
+    expect(eve.newSession).not.toHaveBeenCalled();
     await act(async () =>
       user.click(getByRole(container, "button", { name: "Restart" })),
     );
-    expect(eve.reset).toHaveBeenCalledOnce();
+    expect(eve.newSession).toHaveBeenCalledOnce();
     expect(queryByRole(container, "button", { name: "Restart" })).toBeNull();
     expect(getComposer()).toHaveValue("");
     expect(getByRole(container, "button", { name: "Send" })).toBeDisabled();
@@ -374,7 +376,7 @@ describe("TransactionList Eve integration", () => {
     await act(async () =>
       user.click(getByRole(container, "button", { name: "Restart" })),
     );
-    expect(eve.reset).toHaveBeenCalledOnce();
+    expect(eve.newSession).toHaveBeenCalledOnce();
     expect(queryByRole(container, "button", { name: "Restart" })).toBeNull();
     const reopened = getComposer();
     expect(reopened).toHaveValue("");
@@ -458,15 +460,17 @@ describe("TransactionList Eve integration", () => {
     expect(log).not.toHaveTextContent("No transactions match today in UTC.");
   });
 
-  it("renders structured results from result.completed events", () => {
+  it("renders structured results from content.completed result events", () => {
     act(() => root.render(<TransactionList />));
     const { onEvent } = eve.useEveAgent.mock.calls[0][0];
 
     act(() => {
       onEvent({
-        type: "result.completed",
+        type: "content.completed",
         data: {
-          result: {
+          kind: "result",
+          phase: "reply",
+          value: {
             mode: "anomalies",
             label: "Anomalies",
             matches: [
@@ -524,7 +528,7 @@ describe("TransactionList Eve integration", () => {
       expectNoComposer();
       expect(getByRole(container, "button", { name: "Restart" })).toBeEnabled();
       expect(eve.send).toHaveBeenCalledOnce();
-      expect(eve.reset).not.toHaveBeenCalled();
+      expect(eve.newSession).not.toHaveBeenCalled();
       act(() =>
         fireEvent.click(
           getByRole(container, "button", { name: "Hide details" }),
@@ -719,7 +723,7 @@ describe("TransactionList Eve integration", () => {
       await act(async () =>
         fireEvent.click(getByRole(container, "button", { name: "Restart" })),
       );
-      expect(eve.reset).toHaveBeenCalledOnce();
+      expect(eve.newSession).toHaveBeenCalledOnce();
       expect(getComposer()).toHaveValue("");
       expect(queryByRole(container, "button", { name: "Restart" })).toBeNull();
       expectReasonIds([]);
@@ -739,7 +743,7 @@ describe("TransactionList Eve integration", () => {
       expect(eve.send).toHaveBeenNthCalledWith(2, "Find today's transactions", {
         outputSchema: analysisSchema,
       });
-      expect(eve.reset).toHaveBeenCalledOnce();
+      expect(eve.newSession).toHaveBeenCalledOnce();
       expectNoComposer();
     },
   );
@@ -756,12 +760,15 @@ describe("TransactionList Eve integration", () => {
         role: "assistant",
         parts: [
           {
-            type: "dynamic-tool",
-            toolCallId: "renewals",
-            toolName: "get-transactions",
+            type: "tool",
+            kind: "tool",
+            label: "Tool",
+            stepIndex: 0,
+            callId: "renewals",
+            name: "get-transactions",
             input: {},
             output: transactions,
-            state: "output-available",
+            state: "completed",
           },
         ],
       },
@@ -814,9 +821,11 @@ describe("TransactionList Eve integration", () => {
     const { onEvent } = eve.useEveAgent.mock.calls.at(-1)?.[0] ?? {};
     act(() =>
       onEvent({
-        type: "result.completed",
+        type: "content.completed",
         data: {
-          result: {
+          kind: "result",
+          phase: "reply",
+          value: {
             mode: "search",
             label: "Today",
             matches: [{ transaction_id: "TXN011" }],
@@ -1112,7 +1121,7 @@ describe("TransactionList Eve integration", () => {
     await act(async () =>
       user.click(restart.querySelector("svg") as SVGElement),
     );
-    expect(eve.reset).toHaveBeenCalledOnce();
+    expect(eve.newSession).toHaveBeenCalledOnce();
     expect(eve.send).toHaveBeenCalledOnce();
     expect(
       getByRole(container, "region", { name: "Agent details" }),
@@ -1136,12 +1145,15 @@ describe("TransactionList Eve integration", () => {
         role: "assistant",
         parts: [
           {
-            type: "dynamic-tool",
-            toolCallId: "pointer-tool",
-            toolName: "get-transactions",
+            type: "tool",
+            kind: "tool",
+            label: "Tool",
+            stepIndex: 0,
+            callId: "pointer-tool",
+            name: "get-transactions",
             input: {},
             output: transactions,
-            state: "output-available",
+            state: "completed",
           },
         ],
       },
@@ -1163,7 +1175,7 @@ describe("TransactionList Eve integration", () => {
       getByRole(container, "button", { name: "Hide details" }),
     ).toHaveAttribute("aria-expanded", "true");
     expect(eve.send).toHaveBeenCalledOnce();
-    expect(eve.reset).not.toHaveBeenCalled();
+    expect(eve.newSession).not.toHaveBeenCalled();
     expectNoComposer();
   });
 
@@ -1206,7 +1218,12 @@ describe("TransactionList Eve integration", () => {
 
   function completeResult(result: AnalysisResult) {
     const { onEvent } = eve.useEveAgent.mock.calls.at(-1)?.[0] ?? {};
-    act(() => onEvent({ type: "result.completed", data: { result } }));
+    act(() =>
+      onEvent({
+        type: "content.completed",
+        data: { kind: "result", phase: "reply", value: result },
+      }),
+    );
   }
 
   function expectReasonIds(ids: string[]) {
@@ -1220,17 +1237,42 @@ describe("TransactionList Eve integration", () => {
 
   function renderAgent(
     status: string,
-    messages: unknown[] = [],
+    messages: Omit<EveMessage, "id">[] = [],
     error: Error | null = null,
   ) {
     eve.useEveAgent.mockReturnValue({
-      status,
-      error,
-      data: { messages },
+      status:
+        status === "resuming"
+          ? "resuming"
+          : status === "submitted" || status === "streaming"
+            ? "busy"
+            : "idle",
+      error:
+        error ??
+        (status === "error" ? new Error("Analysis failed") : undefined),
+      messages: [
+        ...(status === "submitted"
+          ? [
+              {
+                id: "pending",
+                role: "user" as const,
+                parts: [],
+                metadata: { status: "submitted" as const },
+              },
+            ]
+          : []),
+        ...messages.map((message, index) => ({
+          ...message,
+          id: `message-${index}`,
+        })),
+      ],
       send: eve.send,
-      reset: eve.reset,
+      newSession: eve.newSession,
       cancel: eve.cancel,
-    });
+    } satisfies Pick<
+      UseEveAgentReturn,
+      "status" | "error" | "messages" | "send" | "newSession" | "cancel"
+    >);
     act(() => root.render(<TransactionList />));
   }
 
@@ -1311,11 +1353,14 @@ describe("TransactionList Eve integration", () => {
         role: "assistant",
         parts: [
           {
-            type: "dynamic-tool",
-            toolCallId: "transaction-1",
-            toolName: "get-transactions",
+            type: "tool",
+            kind: "tool",
+            label: "Tool",
+            stepIndex: 0,
+            callId: "transaction-1",
+            name: "get-transactions",
             input: {},
-            state: "input-available",
+            state: "running",
           },
         ],
       },
@@ -1408,12 +1453,15 @@ describe("TransactionList Eve integration", () => {
         role: "assistant",
         parts: [
           {
-            type: "dynamic-tool",
-            toolCallId: "previous-tool",
-            toolName: "previous-activity",
+            type: "tool",
+            kind: "tool",
+            label: "Tool",
+            stepIndex: 0,
+            callId: "previous-tool",
+            name: "previous-activity",
             input: {},
             output: "Old output",
-            state: "output-available",
+            state: "completed",
           },
         ],
       },
@@ -1430,9 +1478,12 @@ describe("TransactionList Eve integration", () => {
             text: '{"transaction_id":"TXN011","reason":"Assistant dump"}',
           },
           {
-            type: "dynamic-tool",
-            toolCallId: "transactions-1",
-            toolName: "get-transactions",
+            type: "tool",
+            kind: "tool",
+            label: "Tool",
+            stepIndex: 0,
+            callId: "transactions-1",
+            name: "get-transactions",
             input: {},
             output: [
               {
@@ -1440,18 +1491,21 @@ describe("TransactionList Eve integration", () => {
                 description: "Full transaction dump marker",
               },
             ],
-            state: "output-available",
+            state: "completed",
           },
           {
-            type: "dynamic-tool",
-            toolCallId: "transaction-1",
-            toolName: "get-transaction",
+            type: "tool",
+            kind: "tool",
+            label: "Tool",
+            stepIndex: 0,
+            callId: "transaction-1",
+            name: "get-transaction",
             input: { id: "TXN011" },
             output: {
               ...transactions[10],
               description: "Transaction detail dump marker",
             },
-            state: "output-available",
+            state: "completed",
           },
         ],
       },
@@ -1490,33 +1544,158 @@ describe("TransactionList Eve integration", () => {
     expect(markdown).not.toHaveBeenCalled();
   });
 
-  it("uses Eve metadata to label skill calls and renders skill Markdown in the log", () => {
-    eve.useEveAgent.mockReturnValue({
-      status: "ready",
-      error: null,
-      data: {
-        messages: [
+  it.each([
+    { kind: "text", phase: "reply" },
+    { kind: "result", phase: "narration" },
+    { kind: "result", phase: "reply", interrupted: true as const },
+  ])(
+    "ignores non-result, non-reply, and interrupted content: %j",
+    (content) => {
+      act(() => root.render(<TransactionList />));
+      const { onEvent } = eve.useEveAgent.mock.calls.at(-1)?.[0] ?? {};
+      const event = {
+        type: "content.completed",
+        data: {
+          partId: "result-1",
+          runId: "run-1",
+          value: {
+            mode: "search",
+            label: "Today",
+            matches: [],
+            summary: "This must not become a result.",
+          },
+          ...content,
+        },
+        meta: {
+          position: { line: 0, index: 0 },
+          at: "2026-10-30T00:00:00Z",
+          endOfLine: true,
+        },
+      } satisfies SessionStreamEvent;
+      act(() => onEvent(event));
+      expect(
+        queryByRole(container, "region", { name: "Agent response" }),
+      ).toBeNull();
+      expect(container).not.toHaveTextContent("This must not become a result.");
+    },
+  );
+
+  it.each(["completed", "failed", "rejected", "cancelled"] as const)(
+    "does not treat a %s call as the active tool while the session is busy",
+    async (state) => {
+      act(() => root.render(<TransactionList />));
+      await act(async () =>
+        fireEvent.click(
+          getByRole(container, "button", { name: "Find anomalies" }),
+        ),
+      );
+      renderAgent("streaming", [
+        {
+          role: "assistant",
+          parts: [
+            {
+              type: "tool",
+              kind: "tool",
+              callId: "settled-tool",
+              stepIndex: 0,
+              name: "get-transactions",
+              label: "Get transactions",
+              state,
+              input: {},
+              ...(state === "failed"
+                ? { error: { code: "tool-failed", message: "Tool failed" } }
+                : {}),
+            },
+          ],
+        },
+      ]);
+      expect(getByRole(container, "status")).toHaveTextContent(
+        "Analyzing transactions…",
+      );
+      if (state === "failed") {
+        act(() =>
+          fireEvent.click(
+            getByRole(container, "button", { name: /Get transactions/ }),
+          ),
+        );
+        expect(container).toHaveTextContent("Tool failed");
+      }
+    },
+  );
+
+  it("omits control calls and labels agent calls using the new capability kind", () => {
+    renderAgent("streaming", [
+      {
+        role: "assistant",
+        parts: [
           {
-            role: "assistant",
-            parts: [
-              {
-                type: "dynamic-tool",
-                toolCallId: "skill-1",
-                toolName: "internal-action",
-                toolMetadata: {
-                  eve: { kind: "load-skill", name: "anomalies" },
-                },
-                input: { name: "anomalies" },
-                output:
-                  "## Anomaly detection rules\n\n- Review **large payments**.",
-                state: "output-available",
-              },
-            ],
+            type: "tool",
+            kind: "control",
+            callId: "control-1",
+            stepIndex: 0,
+            name: "wait-for-tasks",
+            label: "Wait",
+            state: "running",
+          },
+          {
+            type: "tool",
+            kind: "agent",
+            callId: "agent-1",
+            stepIndex: 0,
+            name: "reviewer",
+            label: "Reviewer",
+            state: "running",
           },
         ],
       },
+    ]);
+    expect(
+      queryByRole(container, "button", { name: /Wait for tasks/ }),
+    ).toBeNull();
+    expect(getByRole(container, "button", { name: /reviewer/ })).toBeVisible();
+    expect(getByRole(container, "status")).toHaveTextContent("reviewer…");
+  });
+
+  it("shows rejected send receipts without an unhandled rejection", async () => {
+    eve.send.mockRejectedValueOnce(new Error("Unable to accept the turn"));
+    act(() => root.render(<TransactionList />));
+    await act(async () =>
+      fireEvent.click(
+        getByRole(container, "button", { name: "Find anomalies" }),
+      ),
+    );
+    expect(getByRole(container, "alert")).toHaveTextContent(
+      "Unable to accept the turn",
+    );
+    expect(getByRole(container, "status")).toHaveTextContent("Analysis failed");
+    expect(getByRole(container, "button", { name: "Restart" })).toBeEnabled();
+  });
+
+  it("uses Eve capability kinds to label skill calls and renders skill Markdown in the log", () => {
+    eve.useEveAgent.mockReturnValue({
+      status: "idle",
+      error: null,
+      messages: [
+        {
+          role: "assistant",
+          parts: [
+            {
+              type: "tool",
+              kind: "skill",
+              label: "Tool",
+              stepIndex: 0,
+              callId: "skill-1",
+              name: "anomalies",
+              input: { name: "anomalies" },
+              output:
+                "## Anomaly detection rules\n\n- Review **large payments**.",
+              state: "completed",
+            },
+          ],
+        },
+      ],
       send: eve.send,
-      reset: eve.reset,
+      newSession: eve.newSession,
       cancel: eve.cancel,
     });
     act(() => root.render(<TransactionList />));

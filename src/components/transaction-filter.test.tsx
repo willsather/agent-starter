@@ -17,7 +17,7 @@ import { TransactionList } from "./transaction-list";
 
 const eve = vi.hoisted(() => ({
   send: vi.fn().mockResolvedValue(undefined),
-  reset: vi.fn(),
+  newSession: vi.fn(),
   cancel: vi.fn().mockResolvedValue(undefined),
   useEveAgent: vi.fn(),
 }));
@@ -61,11 +61,11 @@ describe("TransactionList transaction filters", () => {
     document.body.append(container);
     root = createRoot(container);
     eve.useEveAgent.mockReturnValue({
-      status: "ready",
+      status: "idle",
       error: null,
-      data: { messages: [] },
+      messages: [],
       send: eve.send,
-      reset: eve.reset,
+      newSession: eve.newSession,
       cancel: eve.cancel,
     });
     act(() => root.render(<TransactionList />));
@@ -377,7 +377,7 @@ describe("TransactionList transaction filters", () => {
     await act(async () =>
       fireEvent.click(getByRole(container, "button", { name: "Restart" })),
     );
-    expect(eve.reset).toHaveBeenCalledOnce();
+    expect(eve.newSession).toHaveBeenCalledOnce();
     expectTransactions(allIds);
     expectHighlights(null);
     expect(getByText(container, "58 transactions")).toBeVisible();
@@ -468,7 +468,12 @@ describe("TransactionList transaction filters", () => {
   function completeResult(result: AnalysisResult) {
     const { onEvent } = eve.useEveAgent.mock.calls.at(-1)?.[0] ?? {};
     expect(onEvent).toBeTypeOf("function");
-    act(() => onEvent({ type: "result.completed", data: { result } }));
+    act(() =>
+      onEvent({
+        type: "content.completed",
+        data: { kind: "result", phase: "reply", value: result },
+      }),
+    );
   }
 
   function click(element: Element) {

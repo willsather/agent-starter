@@ -85,8 +85,13 @@ export function TransactionList() {
 
   const agent = useEveAgent({
     onEvent(event) {
-      if (event.type === "result.completed") {
-        const parsed = analysisSchema.safeParse(event.data.result);
+      if (
+        event.type === "content.completed" &&
+        event.data.kind === "result" &&
+        event.data.phase === "reply" &&
+        !event.data.interrupted
+      ) {
+        const parsed = analysisSchema.safeParse(event.data.value);
         if (parsed.success) {
           setResult(parsed.data);
           setSelectedMerchants(null);
@@ -97,9 +102,15 @@ export function TransactionList() {
     },
   });
 
-  const { status, error, data } = agent;
-  const isLoading = status === "submitted" || status === "streaming";
-  const isStreaming = status === "streaming";
+  const { status, error, messages } = agent;
+  const isLoading = status === "busy";
+  const isSubmitting =
+    isLoading &&
+    messages.some(
+      (message) =>
+        message.role === "user" && message.metadata?.status === "submitted",
+    );
+  const isStreaming = isLoading && !isSubmitting;
 
   const highlights = buildHighlights(result, transactions);
   const merchantLegend = [
@@ -148,45 +159,47 @@ export function TransactionList() {
   // keep transaction payloads out of the visible activity log
   const logItems = useMemo<LogItem[]>(() => {
     const items: LogItem[] = [];
-    const latestUserIndex = data.messages.findLastIndex(
+    const latestUserIndex = messages.findLastIndex(
       (message) => message.role === "user",
     );
-    for (const message of data.messages.slice(latestUserIndex + 1)) {
+    for (const message of messages.slice(latestUserIndex + 1)) {
       if (message.role !== "assistant") continue;
       for (const part of message.parts) {
-        if (part.type === "dynamic-tool") {
+        if (part.type === "tool" && part.kind !== "control") {
           items.push({
             kind: "tool",
-            id: part.toolCallId,
-            toolName: part.toolName,
-            actionKind: part.toolMetadata?.eve?.kind ?? "tool-call",
-            name: part.toolMetadata?.eve?.name,
+            id: part.callId,
+            toolName: part.name,
+            actionKind:
+              part.kind === "skill"
+                ? "load-skill"
+                : part.kind === "agent"
+                  ? "subagent-call"
+                  : "tool-call",
+            name: part.name,
             input: part.input,
-            output: part.state === "output-available" ? part.output : undefined,
-            errorText:
-              part.state === "output-error" ? part.errorText : undefined,
+            output: part.state === "completed" ? part.output : undefined,
+            errorText: part.error?.message,
             state: part.state,
           });
         }
       }
     }
     return items;
-  }, [data.messages]);
+  }, [messages]);
 
   const activeTool = logItems.findLast(
     (item): item is ToolLogItem =>
       item.kind === "tool" &&
-      !["output-available", "output-error", "output-denied"].includes(
-        item.state,
-      ),
+      !["completed", "failed", "rejected", "cancelled"].includes(item.state),
   );
   const logStatus = isRestarting
     ? "Restarting…"
-    : status === "error" || restartError
+    : error || restartError
       ? "Analysis failed"
       : status === "resuming"
         ? "Restoring session…"
-        : status === "submitted"
+        : isSubmitting
           ? "Starting analysis…"
           : isLoading
             ? activeTool
@@ -218,7 +231,14 @@ export function TransactionList() {
     setRestartError(null);
     setSubmittedPrompt(message);
     setPrompt("");
-    void agent.send(message, { outputSchema: analysisSchema });
+    void agent
+      .send(message, { outputSchema: analysisSchema })
+      .catch((cause) => {
+        setRestartError(
+          cause instanceof Error ? cause.message : "Unable to send the prompt.",
+        );
+        setDetailsOpen(true);
+      });
   }
 
   function toggleDetailsFromBox(event: PointerEvent<HTMLDivElement>) {
@@ -240,7 +260,7 @@ export function TransactionList() {
     setRestartError(null);
     try {
       if (isLoading || status === "resuming") await agent.cancel();
-      agent.reset();
+      agent.newSession();
       setPrompt("");
       setSubmittedPrompt("");
       setResult(null);
@@ -281,7 +301,7 @@ export function TransactionList() {
                 isLoading ||
                 isRestarting ||
                 status === "resuming" ||
-                status === "error" ||
+                error ||
                 restartError) && (
                 <span
                   role="status"
@@ -486,14 +506,14 @@ export function TransactionList() {
                 isLoading ||
                 logItems.length > 0 ||
                 result ||
-                status === "error") && (
+                error) && (
                 <section
                   aria-label="Agent activity"
                   className="scrollbar-themed max-h-[32rem] space-y-2 overflow-y-auto overscroll-contain border-border border-t p-3"
                 >
                   {logItems.length === 0 ? (
                     <p className="px-1 py-3 text-muted-foreground text-sm">
-                      {status === "error"
+                      {error
                         ? "No activity recorded. Restart to try again."
                         : "Waiting for agent activity…"}
                     </p>
@@ -510,7 +530,7 @@ export function TransactionList() {
                   )}
                 </section>
               )}
-              {(status === "error" || restartError) && (
+              {(error || restartError) && (
                 <p
                   role="alert"
                   className="border-border border-t bg-red-500/10 p-4 text-red-400 text-sm"
@@ -655,13 +675,13 @@ function StateIcon({
   state: string;
   isStreaming: boolean;
 }) {
-  if (state === "output-available") {
+  if (state === "completed") {
     return <Check className="h-3.5 w-3.5 text-green-500" />;
   }
-  if (state === "output-error") {
+  if (state === "failed") {
     return <CircleX className="h-3.5 w-3.5 text-red-500" />;
   }
-  if (state === "output-denied") {
+  if (state === "rejected" || state === "cancelled") {
     return <AlertTriangle className="h-3.5 w-3.5 text-yellow-500" />;
   }
   if (isStreaming) {
@@ -689,7 +709,7 @@ function ToolCard({
     item.toolName === "get-transactions" || item.toolName === "get-transaction";
   const output =
     item.errorText ??
-    (isTransactionTool && item.state === "output-available"
+    (isTransactionTool && item.state === "completed"
       ? item.toolName === "get-transactions"
         ? "Transactions loaded into the table."
         : "Transaction details loaded into the table."

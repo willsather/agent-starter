@@ -1,7 +1,9 @@
 ---
+
 name: anomalies
 description: Defines what counts as an anomalous transaction and how to spot each kind
 ---
+
 # What is an anomaly
 
 An anomaly is a transaction that deviates from normal spending patterns in a way
